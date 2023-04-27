@@ -55,8 +55,9 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			}
 
 			epoch := time.Unix(sample.Timestamp/1000, 0).UTC()
+			timestamp := epoch.UnixNano() / int64(time.Millisecond)
 			m := map[string]interface{}{
-				"timestamp": epoch.Format(time.RFC3339),
+				"timestamp": timestamp,
 				"value":     strconv.FormatFloat(sample.Value, 'f', -1, 64),
 				"name":      name,
 				"labels":    labels,
