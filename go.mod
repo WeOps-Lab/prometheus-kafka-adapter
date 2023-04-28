@@ -1,4 +1,4 @@
-module github.com/Telefonica/prometheus-kafka-adapter
+module weops-adapter
 
 go 1.17
 

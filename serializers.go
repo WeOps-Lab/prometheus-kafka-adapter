@@ -17,15 +17,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
-	"strconv"
-	"time"
-
-	"github.com/prometheus/common/model"
+	"github.com/linkedin/goavro"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/sirupsen/logrus"
-
-	"github.com/linkedin/goavro"
+	"io/ioutil"
 )
 
 // Serializer represents an abstract metrics serializer
@@ -34,7 +29,7 @@ type Serializer interface {
 }
 
 // Serialize generates the JSON representation for a given Prometheus metric.
-func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, error) {
+func Serialize(req *prompb.WriteRequest) (map[string][][]byte, error) {
 	promBatches.Add(float64(1))
 	result := make(map[string][][]byte)
 
@@ -42,32 +37,41 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		labels := make(map[string]string, len(ts.Labels))
 
 		for _, l := range ts.Labels {
-			labels[string(model.LabelName(l.Name))] = string(model.LabelValue(l.Value))
+			labels[l.Name] = l.Value
+		}
+
+		// 必须带有protocol字段才会当做处理指标
+		if _, protocolExist := labels[Protocol]; !protocolExist {
+			continue
+		}
+
+		metricName := labels["__name__"]
+
+		// 提取维度信息
+		dimensions := map[string]interface{}{}
+
+		// 过滤指标
+		if labels[Protocol] == Kubernetes && k8sMetricsHandle(labels, metricName) {
+			dimensions = fillUpBkInfo(labels)
+		} else {
+			continue
 		}
 
 		t := topic(labels)
 
 		for _, sample := range ts.Samples {
-			name := string(labels["__name__"])
-			if !filter(name, labels) {
+			if !filter(metricName, labels) {
 				objectsFiltered.Add(float64(1))
 				continue
 			}
 
-			epoch := time.Unix(sample.Timestamp/1000, 0).UTC()
-			timestamp := epoch.UnixNano() / int64(time.Millisecond)
-			m := map[string]interface{}{
-				"timestamp": timestamp,
-				"value":     strconv.FormatFloat(sample.Value, 'f', -1, 64),
-				"name":      name,
-				"labels":    labels,
-			}
-
-			data, err := s.Marshal(m)
+			// 数据清洗
+			data, err := processData(metricName, dimensions, sample)
 			if err != nil {
 				serializeFailed.Add(float64(1))
 				logrus.WithError(err).Errorln("couldn't marshal timeseries")
 			}
+
 			serializeTotal.Add(float64(1))
 			result[t] = append(result[t], data)
 		}

@@ -21,5 +21,5 @@ import (
 
 func processWriteRequest(req *prompb.WriteRequest) (map[string][][]byte, error) {
 	logrus.WithField("var", req).Debugln()
-	return Serialize(serializer, req)
+	return Serialize(req)
 }
