@@ -27,6 +27,8 @@ import (
 )
 
 var (
+	bkAppWeopsAppId        = "weops_saas"
+	bkAppPaasHost          = "http://paas.weops.com"
 	kafkaBrokerList        = "kafka:9092"
 	kafkaTopic             = "metrics"
 	topicTemplate          *template.Template
@@ -50,6 +52,14 @@ var (
 func init() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetOutput(os.Stdout)
+
+	if value := os.Getenv("BKAPP_WEOPS_APP_ID"); value != "" {
+		bkAppWeopsAppId = value
+	}
+
+	if value := os.Getenv("BKAPP_PAAS_HOST"); value != "" {
+		bkAppPaasHost = value
+	}
 
 	if value := os.Getenv("LOG_LEVEL"); value != "" {
 		logrus.SetLevel(parseLogLevel(value))
