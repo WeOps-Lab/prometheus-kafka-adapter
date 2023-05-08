@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/prometheus/prometheus/prompb"
+	"github.com/sirupsen/logrus"
 	"math"
 	"time"
 )
@@ -52,6 +53,7 @@ func k8sMetricsHandle(labels map[string]string, metricName string) (exist bool) 
 		return true
 	} else if _, podMetricsExist := K8sPodMetrics[metricName]; podMetricsExist {
 		labels["bk_object_id"] = K8sPodObjectId
+		labels["instance_name"] = labels["uid"]
 		return true
 	} else {
 		return false
@@ -60,10 +62,49 @@ func k8sMetricsHandle(labels map[string]string, metricName string) (exist bool) 
 
 // TODO: 调用接口获取到以下字段信息
 func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) {
+	// 先填入所有维度信息
 	dimensions = make(map[string]interface{})
 	for key, value := range labels {
 		dimensions[key] = value
 	}
 
+	bkObjectId := dimensions["bk_object_id"].(string)
+	instanceName := dimensions["instance_name"].(string)
+
+	//TODO: 缓存所有
+	dimensions["bk_inst_id"] = getBkInstId(bkObjectId, instanceName)
+	dimensions["bk_biz_id"] = getBkBizId(bkObjectId, dimensions["bk_inst_id"].(int))
+
+	//TODO: 缓存data_id
+	dimensions["bk_data_id"] = checkDataId(bkObjectId)
+
 	return dimensions
+}
+
+func checkDataId(bkObjectId string) int {
+	//c := cache.New(5*time.Minute, 10*time.Minute)
+	var bkDataId int
+
+	// Try to retrieve the result from the cache first
+	//cacheKey := "BkObjDataIdMap"
+	//if result, found := c.Get(cacheKey); found {
+	//	// Result found in cache, use it
+	//	BkObjDataIdMap[bkObjectId] = result.(int)
+	//	fmt.Print("using cache")
+	//} else {
+	//	query := "SELECT bk_data_id FROM home_application_customtstable WHERE id IN (SELECT JSON_EXTRACT(JSON_ARRAYAGG(bk_ts_table_ids), '$[0][0]') FROM home_application_monitorcentercustomts WHERE monitor_obj_id = (SELECT id FROM home_application_monitorobject WHERE bk_obj_id = ?))"
+	//	err := db.QueryRow(query, bkObjectId).Scan(&bkDataId)
+	//	if err != nil {
+	//		logrus.WithError(err).Errorf("find bk_obj_id [%s] data id error", bkObjectId)
+	//	}
+	//	BkObjDataIdMap[bkObjectId] = bkDataId
+	//}
+
+	query := "SELECT bk_data_id FROM home_application_customtstable WHERE id IN (SELECT JSON_EXTRACT(JSON_ARRAYAGG(bk_ts_table_ids), '$[0][0]') FROM home_application_monitorcentercustomts WHERE monitor_obj_id = (SELECT id FROM home_application_monitorobject WHERE bk_obj_id = ?))"
+	err := db.QueryRow(query, bkObjectId).Scan(&bkDataId)
+	if err != nil {
+		logrus.WithError(err).Errorf("find bk_obj_id [%s] data id error", bkObjectId)
+	}
+	BkObjDataIdMap[bkObjectId] = bkDataId
+	return BkObjDataIdMap[bkObjectId]
 }

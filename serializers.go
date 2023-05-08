@@ -57,6 +57,11 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			continue
 		}
 
+		// 业务id和实例id为0，未查询到
+		if dimensions["bk_inst_id"] == 0 {
+			continue
+		}
+
 		t := topic(labels)
 
 		for _, sample := range ts.Samples {

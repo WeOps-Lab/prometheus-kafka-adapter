@@ -15,13 +15,16 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"gopkg.in/yaml.v2"
 	"os"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -29,6 +32,13 @@ import (
 var (
 	bkAppWeopsAppId        = "weops_saas"
 	bkAppPaasHost          = "http://paas.weops.com"
+	weopsDbUser            = "weops"
+	weopsDbPass            = "Weops123!"
+	weopsDbHost            = "127.0.0.1"
+	weopsDbPort            = "3306"
+	weopsDbName            = "monitorcenter_saas"
+	db                     *sql.DB // 全局变量，保存数据库连接
+	dsn                    = ""
 	kafkaBrokerList        = "kafka:9092"
 	kafkaTopic             = "metrics"
 	topicTemplate          *template.Template
@@ -59,6 +69,26 @@ func init() {
 
 	if value := os.Getenv("BKAPP_PAAS_HOST"); value != "" {
 		bkAppPaasHost = value
+	}
+
+	if value := os.Getenv("WEOPS_DB_USER"); value != "" {
+		weopsDbUser = value
+	}
+
+	if value := os.Getenv("WEOPS_DB_PASSWORD"); value != "" {
+		weopsDbPass = value
+	}
+
+	if value := os.Getenv("WEOPS_DB_HOST"); value != "" {
+		weopsDbHost = value
+	}
+
+	if value := os.Getenv("WEOPS_DB_PORT"); value != "" {
+		weopsDbPort = value
+	}
+
+	if value := os.Getenv("WEOPS_DB_DATABASENAME"); value != "" {
+		weopsDbName = value
 	}
 
 	if value := os.Getenv("LOG_LEVEL"); value != "" {
@@ -140,6 +170,16 @@ func init() {
 	if err != nil {
 		logrus.WithError(err).Fatalln("couldn't parse the topic template")
 	}
+
+	dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", weopsDbUser, weopsDbPass, weopsDbHost, weopsDbPort, weopsDbName)
+	// 连接数据库
+	db, err = sql.Open("mysql", dsn)
+	if err != nil {
+		logrus.WithError(err).Fatalln("couldn't connect to mysql")
+	}
+
+	db.SetConnMaxLifetime(time.Second * 1800)
+	db.SetMaxOpenConns(30)
 }
 
 func parseMatchList(text string) (map[string]*dto.MetricFamily, error) {
