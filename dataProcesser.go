@@ -45,8 +45,9 @@ func processData(metricName string, dimensions map[string]interface{}, sample pr
 	return json.Marshal(handleData)
 }
 
-// k8sMetricsExist 判断k8s指标，并补充k8s类的bk_object_id
-func k8sMetricsHandle(labels map[string]string, metricName string) (exist bool) {
+// k8sMetricsPreHandler 判断k8s指标，并补充k8s类的bk_object_id
+func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
+	metricName := labels["__name__"]
 	if _, nodeMetricsExist := K8sNodeMetrics[metricName]; nodeMetricsExist {
 		labels["bk_object_id"] = K8sNodeObjectId
 		labels["instance_name"] = labels["node"]
@@ -60,7 +61,7 @@ func k8sMetricsHandle(labels map[string]string, metricName string) (exist bool) 
 	}
 }
 
-// TODO: 调用接口获取到以下字段信息
+// fillUpBkInfo 补充蓝鲸指标信息
 func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) {
 	// 先填入所有维度信息
 	dimensions = make(map[string]interface{})
@@ -71,40 +72,31 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	bkObjectId := dimensions["bk_object_id"].(string)
 	instanceName := dimensions["instance_name"].(string)
 
-	//TODO: 缓存所有
-	dimensions["bk_inst_id"] = getBkInstId(bkObjectId, instanceName)
+	dimensions["bk_inst_id"] = getK8sBkInstId(bkObjectId, instanceName)
 	dimensions["bk_biz_id"] = getBkBizId(bkObjectId, dimensions["bk_inst_id"].(int))
+	dimensions["bk_data_id"] = getDataId(bkObjectId)
 
-	//TODO: 缓存data_id
-	dimensions["bk_data_id"] = checkDataId(bkObjectId)
+	if bkObjectId == K8sPodObjectId {
+		dimensions["workload"] = getWorkloadID(dimensions["bk_inst_id"].(int))
+	}
 
 	return dimensions
 }
 
-func checkDataId(bkObjectId string) int {
-	//c := cache.New(5*time.Minute, 10*time.Minute)
-	var bkDataId int
-
-	// Try to retrieve the result from the cache first
-	//cacheKey := "BkObjDataIdMap"
-	//if result, found := c.Get(cacheKey); found {
-	//	// Result found in cache, use it
-	//	BkObjDataIdMap[bkObjectId] = result.(int)
-	//	fmt.Print("using cache")
-	//} else {
-	//	query := "SELECT bk_data_id FROM home_application_customtstable WHERE id IN (SELECT JSON_EXTRACT(JSON_ARRAYAGG(bk_ts_table_ids), '$[0][0]') FROM home_application_monitorcentercustomts WHERE monitor_obj_id = (SELECT id FROM home_application_monitorobject WHERE bk_obj_id = ?))"
-	//	err := db.QueryRow(query, bkObjectId).Scan(&bkDataId)
-	//	if err != nil {
-	//		logrus.WithError(err).Errorf("find bk_obj_id [%s] data id error", bkObjectId)
-	//	}
-	//	BkObjDataIdMap[bkObjectId] = bkDataId
-	//}
-
-	query := "SELECT bk_data_id FROM home_application_customtstable WHERE id IN (SELECT JSON_EXTRACT(JSON_ARRAYAGG(bk_ts_table_ids), '$[0][0]') FROM home_application_monitorcentercustomts WHERE monitor_obj_id = (SELECT id FROM home_application_monitorobject WHERE bk_obj_id = ?))"
-	err := db.QueryRow(query, bkObjectId).Scan(&bkDataId)
-	if err != nil {
-		logrus.WithError(err).Errorf("find bk_obj_id [%s] data id error", bkObjectId)
+func getDataId(bkObjectId string) (bkDataId int) {
+	if result, found := bkCache.Get(bkObjectId); found {
+		// Result found in cache, use it
+		logrus.Debugf("using data id cache for object: %v", bkObjectId)
+		return result.(int)
+	} else {
+		query := "SELECT bk_data_id FROM home_application_customtstable WHERE id IN (SELECT JSON_EXTRACT(JSON_ARRAYAGG(bk_ts_table_ids), '$[0][0]') FROM home_application_monitorcentercustomts WHERE monitor_obj_id = (SELECT id FROM home_application_monitorobject WHERE bk_obj_id = ?))"
+		err := db.QueryRow(query, bkObjectId).Scan(&bkDataId)
+		if err != nil {
+			logrus.WithError(err).Errorf("find bk_obj_id [%s] data id error", bkObjectId)
+		}
+		// Setting cache for data id
+		bkCache.Set(bkObjectId, bkDataId, time.Duration(cacheExpiration)*time.Second)
 	}
-	BkObjDataIdMap[bkObjectId] = bkDataId
-	return BkObjDataIdMap[bkObjectId]
+
+	return bkDataId
 }

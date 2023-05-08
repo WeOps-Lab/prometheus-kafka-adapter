@@ -18,10 +18,12 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/patrickmn/go-cache"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"gopkg.in/yaml.v2"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -57,11 +59,17 @@ var (
 	kafkaSaslUsername      = ""
 	kafkaSaslPassword      = ""
 	serializer             Serializer
+	bkCache                *cache.Cache
+	cacheExpiration        = int64(300)
+
+	metricsFilePath = "metrics.yaml"
 )
 
 func init() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetOutput(os.Stdout)
+
+	bkCache = cache.New(5*time.Minute, 10*time.Minute)
 
 	if value := os.Getenv("BKAPP_WEOPS_APP_ID"); value != "" {
 		bkAppWeopsAppId = value
@@ -160,6 +168,10 @@ func init() {
 		match = matchList
 	}
 
+	if value := os.Getenv("METRICS_FILE"); value != "" {
+		metricsFilePath = value
+	}
+
 	var err error
 	serializer, err = parseSerializationFormat(os.Getenv("SERIALIZATION_FORMAT"))
 	if err != nil {
@@ -170,6 +182,17 @@ func init() {
 	if err != nil {
 		logrus.WithError(err).Fatalln("couldn't parse the topic template")
 	}
+
+	// 缓存时长
+	if value := os.Getenv("CACHE_EXPIRATION"); value != "" {
+		intValue, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			logrus.WithError(err).Fatalln("parse cache expiration error")
+		}
+		cacheExpiration = intValue
+	}
+
+	parseK8sMetricsFile(metricsFilePath)
 
 	dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", weopsDbUser, weopsDbPass, weopsDbHost, weopsDbPort, weopsDbName)
 	// 连接数据库
@@ -245,4 +268,27 @@ func parseTopicTemplate(tpl string) (*template.Template, error) {
 		},
 	}
 	return template.New("topic").Funcs(funcMap).Parse(tpl)
+}
+
+// parseK8sMetricsFile 加载k8s指标
+func parseK8sMetricsFile(filePath string) {
+	yamlFile, err := os.ReadFile(filePath)
+	if err != nil {
+		logrus.Errorf("Failed to read %v: %v", filePath, err)
+	}
+
+	var metrics MetricsFileData
+
+	err = yaml.Unmarshal(yamlFile, &metrics)
+	if err != nil {
+		logrus.Errorf("Failed to parse YAML %v: %v", filePath, err)
+	}
+
+	for _, nodeMetric := range metrics.NodeMetrics {
+		K8sNodeMetrics[nodeMetric] = nodeMetric
+	}
+
+	for _, podMetric := range metrics.PodMetrics {
+		K8sPodMetrics[podMetric] = podMetric
+	}
 }

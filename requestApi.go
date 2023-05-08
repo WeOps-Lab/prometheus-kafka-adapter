@@ -7,23 +7,48 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var weopsOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppWeopsAppId)
 
 // getBizId 获取CMDB业务ID
-func getBkBizId(bkObjId string, bkInstId int) int {
-	return getId(fmt.Sprintf("%s/get_inst_biz_id/?bk_obj_id=%v&bk_inst_id=%s", weopsOpenApiUrl, bkObjId, bkInstId), bkObjId, bkInstId)
+func getBkBizId(bkObjId string, bkInstId int) (bkBizId int) {
+	bkObjIdBizId := fmt.Sprintf("%s@@%s", bkObjId, bkInstId)
+	if result, found := bkCache.Get(bkObjIdBizId); found {
+		logrus.Debugf("using bkObjIdBizId cache for object: %v, inst id: %v", bkObjId, bkInstId)
+		return result.(int)
+	} else {
+		bkBizId = getId(fmt.Sprintf("%s/get_inst_biz_id/?bk_obj_id=%v&bk_inst_id=%v", weopsOpenApiUrl, bkObjId, bkInstId), bkObjId, bkInstId)
+		bkCache.Set(bkObjIdBizId, bkBizId, time.Duration(cacheExpiration)*time.Second)
+	}
+	return
 }
 
-// getBkInstId 获取CMDB实例ID
-func getBkInstId(bkObjId, bkInstName string) int {
-	return getId(fmt.Sprintf("%s/get_k8s_inst_id/?bk_obj_id=%v&bk_inst_name=%s", weopsOpenApiUrl, bkObjId, bkInstName), bkObjId, bkInstName)
+// getK8sBkInstId 获取CMDB中k8s实例ID
+func getK8sBkInstId(bkObjId, bkInstName string) (bkInstId int) {
+	bkObjIdInstName := fmt.Sprintf("%s@@%s", bkObjId, bkInstName)
+	if result, found := bkCache.Get(bkObjIdInstName); found {
+		logrus.Debugf("using bkObjIdInstName cache for object: %v, inst name: %v", bkObjId, bkInstName)
+		return result.(int)
+	} else {
+		bkInstId = getId(fmt.Sprintf("%s/get_k8s_inst_id/?bk_obj_id=%v&bk_inst_name=%s", weopsOpenApiUrl, bkObjId, bkInstName), bkObjId, bkInstName)
+		bkCache.Set(bkObjIdInstName, bkInstId, time.Duration(cacheExpiration)*time.Second)
+	}
+	return bkInstId
 }
 
 // getWorkloadID 获取workload ID
-func getWorkloadID(podId int, podName string) int {
-	return getId(fmt.Sprintf("%s/get_k8s_workload_id/?pod_id=%d", weopsOpenApiUrl, podId), podId, podName)
+func getWorkloadID(podId int) (workloadId int) {
+	bkPodIdWkId := fmt.Sprintf("workload@@%v", podId)
+	if result, found := bkCache.Get(bkPodIdWkId); found {
+		logrus.Debugf("using bkPodIdWkId cache for pod: %v", podId)
+		return result.(int)
+	} else {
+		workloadId = getId(fmt.Sprintf("%s/get_k8s_workload_id/?pod_id=%v", weopsOpenApiUrl, podId), podId)
+		bkCache.Set(bkPodIdWkId, workloadId, time.Duration(cacheExpiration)*time.Second)
+	}
+	return workloadId
 }
 
 // getId 获取不同的ID
@@ -34,7 +59,7 @@ func getId(url string, instanceIDs ...interface{}) int {
 			Proxy: nil,
 		},
 	}
-	// 发起 HTTP 请求
+
 	response, err := httpClient.Get(url)
 	if err != nil {
 		logrus.WithError(err).Errorf("查询不到实例: %v", instanceIDs)
@@ -47,10 +72,5 @@ func getId(url string, instanceIDs ...interface{}) int {
 	}
 
 	bkInstId, _ := strconv.Atoi(strings.TrimSpace(string(body)))
-
-	//if bkInstId == 0 {
-	//logrus.WithError(err).Errorf("查询到实例ID为0: %v", instanceIDs)
-	//}
-
 	return bkInstId
 }

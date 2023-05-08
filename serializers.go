@@ -51,14 +51,14 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		dimensions := map[string]interface{}{}
 
 		// 过滤指标
-		if labels[Protocol] == Kubernetes && k8sMetricsHandle(labels, metricName) {
+		if labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels) {
 			dimensions = fillUpBkInfo(labels)
 		} else {
 			continue
 		}
 
-		// 业务id和实例id为0，未查询到
-		if dimensions["bk_inst_id"] == 0 {
+		// TODO: 业务id和实例id为0，是否丢弃
+		if dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0 {
 			continue
 		}
 
