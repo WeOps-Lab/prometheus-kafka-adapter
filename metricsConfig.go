@@ -33,40 +33,10 @@ type CommonMetrics struct {
 }
 
 // K8sPodMetrics k8s容器指标
-var K8sPodMetrics = map[string]string{
-	"pod_cpu_utilization":                      "pod_cpu_utilization",
-	"container_cpu_utilization":                "container_cpu_utilization",
-	"pod_memory_usage":                         "pod_memory_usage",
-	"container_memory_usage_bytes":             "container_memory_usage",
-	"pod_memory_utilization":                   "pod_memory_utilization",
-	"container_memory_utilization":             "container_memory_utilization",
-	"pod_network_receive":                      "pod_network_receive",
-	"pod_network_transmit":                     "pod_network_transmit",
-	"pod_cpu_load":                             "pod_cpu_load",
-	"container_cpu_load_average_10s":           "container_cpu_load",
-	"kube_pod_start_time":                      "pod_start_time_seconds",
-	"kube_pod_status_phase":                    "kube_pod_status_phase",
-	"kube_pod_container_status_restarts_total": "kube_pod_container_status_restarts_total",
-}
+var K8sPodMetrics = make(map[string]string)
 
 // K8sNodeMetrics k8s节点指标
-var K8sNodeMetrics = map[string]string{
-	"node_cpu_utilization":             "node_app_memory_usage",
-	"node_app_memory_usage_bytes":      "node_app_memory_usage",
-	"node_app_memory_utilization":      "node_app_memory_utilization",
-	"node_physical_memory_usage_bytes": "node_physical_memory_usage",
-	"node_physical_memory_utilization": "node_physical_memory_utilization",
-	"node_disk_io_now":                 "node_io_current",
-	"node_network_receive":             "node_network_receive",
-	"node_network_transmit":            "node_network_transmit",
-	"node_load1":                       "node_cpu_load1",
-	"node_load5":                       "node_cpu_load5",
-	"node_load15":                      "node_cpu_load15",
-	"node_filesystem_usage_bytes":      "node_filesystem_usage",
-	"node_filesystem_avail_bytes":      "node_filesystem_free",
-	"node_filesystem_utilization":      "node_filesystem_utilization",
-	"kube_node_status_condition":       "kube_node_status_condition",
-}
+var K8sNodeMetrics = make(map[string]string)
 
 type MetricsData struct {
 	Data []struct {
@@ -74,4 +44,9 @@ type MetricsData struct {
 		Metrics   map[string]float64     `json:"metrics"`
 		Timestamp int64                  `json:"timestamp"`
 	} `json:"data"`
+}
+
+type MetricsFileData struct {
+	NodeMetrics []string `yaml:"K8sNodeMetrics"`
+	PodMetrics  []string `yaml:"K8sPodMetrics"`
 }
