@@ -58,10 +58,10 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			continue
 		}
 
-		// TODO: 业务id和实例id为0，是否丢弃
-		//if dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0 {
-		//	continue
-		//}
+		// 丢弃业务id和实例id为0的指标
+		if dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0 {
+			continue
+		}
 
 		if dimensions["bk_data_id"] != "" {
 			kafkaTopic = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
