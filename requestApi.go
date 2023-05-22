@@ -62,13 +62,13 @@ func getId(url string, instanceIDs ...interface{}) int {
 
 	response, err := httpClient.Get(url)
 	if err != nil {
-		logrus.WithError(err).Errorf("查询不到实例: %v", instanceIDs)
+		logrus.WithError(err).Errorf("http get url error: %v", url)
 	}
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		logrus.WithError(err).Errorf("读取实例响应时出错: %v", instanceIDs)
+		logrus.WithError(err).Errorf("response for instance error: %v", instanceIDs)
 	}
 
 	bkInstId, _ := strconv.Atoi(strings.TrimSpace(string(body)))
