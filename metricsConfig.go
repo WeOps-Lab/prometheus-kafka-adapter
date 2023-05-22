@@ -26,14 +26,6 @@ const (
 	K8sNodeObjectId = "bk_node"
 )
 
-var BkObjDataIdMap = make(map[string]int)
-
-type CommonMetrics struct {
-	Name     string `json:"name"`
-	Protocol string `json:"protocol"`
-	Instance string `json:"Instance"`
-}
-
 // K8sPodMetrics k8s容器指标
 var K8sPodMetrics = make(map[string]string)
 
