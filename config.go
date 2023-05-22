@@ -15,7 +15,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/patrickmn/go-cache"
@@ -32,15 +31,9 @@ import (
 )
 
 var (
-	bkAppWeopsAppId        = "weops_saas"
+	bkAppWeopsId           = "weops_saas"
+	bkAppMonitorCenterId   = "monitorcenter_saas"
 	bkAppPaasHost          = "http://paas.weops.com"
-	weopsDbUser            = "weops"
-	weopsDbPass            = "Weops123!"
-	weopsDbHost            = "127.0.0.1"
-	weopsDbPort            = "3306"
-	weopsDbName            = "monitorcenter_saas"
-	db                     *sql.DB // 全局变量，保存数据库连接
-	dsn                    = ""
 	kafkaBrokerList        = "kafka:9092"
 	kafkaTopic             = "metrics"
 	topicTemplate          *template.Template
@@ -72,31 +65,15 @@ func init() {
 	bkCache = cache.New(5*time.Minute, 10*time.Minute)
 
 	if value := os.Getenv("BKAPP_WEOPS_APP_ID"); value != "" {
-		bkAppWeopsAppId = value
+		bkAppWeopsId = value
+	}
+
+	if value := os.Getenv("BKAPP_MONITORCENTER_APP_ID"); value != "" {
+		bkAppMonitorCenterId = value
 	}
 
 	if value := os.Getenv("BKAPP_PAAS_HOST"); value != "" {
 		bkAppPaasHost = value
-	}
-
-	if value := os.Getenv("WEOPS_DB_USER"); value != "" {
-		weopsDbUser = value
-	}
-
-	if value := os.Getenv("WEOPS_DB_PASSWORD"); value != "" {
-		weopsDbPass = value
-	}
-
-	if value := os.Getenv("WEOPS_DB_HOST"); value != "" {
-		weopsDbHost = value
-	}
-
-	if value := os.Getenv("WEOPS_DB_PORT"); value != "" {
-		weopsDbPort = value
-	}
-
-	if value := os.Getenv("WEOPS_DB_DATABASENAME"); value != "" {
-		weopsDbName = value
 	}
 
 	if value := os.Getenv("LOG_LEVEL"); value != "" {
@@ -193,16 +170,6 @@ func init() {
 	}
 
 	parseK8sMetricsFile(metricsFilePath)
-
-	dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", weopsDbUser, weopsDbPass, weopsDbHost, weopsDbPort, weopsDbName)
-	// 连接数据库
-	db, err = sql.Open("mysql", dsn)
-	if err != nil {
-		logrus.WithError(err).Fatalln("couldn't connect to mysql")
-	}
-
-	db.SetConnMaxLifetime(time.Second * 1800)
-	db.SetMaxOpenConns(30)
 }
 
 func parseMatchList(text string) (map[string]*dto.MetricFamily, error) {

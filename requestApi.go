@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-var weopsOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppWeopsAppId)
+var weopsOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppWeopsId)
+var monitorCenterOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppMonitorCenterId)
 
 // getBizId 获取CMDB业务ID
 func getBkBizId(bkObjId string, bkInstId int) (bkBizId int) {
@@ -34,17 +35,17 @@ func getK8sBkInstId(bkObjId, bkInstName string) (bkInstId int) {
 		logrus.Debugf("using bkObjIdInstName cache for object: %v, inst name: %v", bkObjId, bkInstName)
 		return result.(int)
 	} else {
-		bkInstId = getId(fmt.Sprintf("%s/get_k8s_inst_id/?bk_obj_id=%v&bk_inst_name=%s", weopsOpenApiUrl, bkObjId, bkInstName), bkObjId, bkInstName)
+		bkInstId = getId(fmt.Sprintf("%s/get_k8s_inst_id/?bk_obj_id=%v&bk_inst_name=%v", weopsOpenApiUrl, bkObjId, bkInstName), bkObjId, bkInstName)
 		bkCache.Set(bkObjIdInstName, bkInstId, time.Duration(cacheExpiration)*time.Second)
 	}
 	return bkInstId
 }
 
 // getWorkloadID 获取workload ID
-func getWorkloadID(podId int) (workloadId int) {
-	bkPodIdWkId := fmt.Sprintf("workload@@%v", podId)
+func getWorkloadID(instanceName string, podId int) (workloadId int) {
+	bkPodIdWkId := fmt.Sprintf("%v@@%v", instanceName, podId)
 	if result, found := bkCache.Get(bkPodIdWkId); found {
-		logrus.Debugf("using bkPodIdWkId cache for pod: %v", podId)
+		logrus.Debugf("using bkPodIdWkId cache for instance: %v, pod: %v", instanceName, podId)
 		return result.(int)
 	} else {
 		workloadId = getId(fmt.Sprintf("%s/get_k8s_workload_id/?pod_id=%v", weopsOpenApiUrl, podId), podId)
@@ -54,20 +55,32 @@ func getWorkloadID(podId int) (workloadId int) {
 }
 
 // getId 获取不同的ID
-func getId(url string, instanceIDs ...interface{}) int {
+func getId(url string, instanceIDs ...interface{}) (bkInstId int) {
 	httpClient := createHTTPClient()
 	body, err := sendHTTPRequest(url, httpClient, instanceIDs...)
 	if err != nil {
 		logrus.WithError(err).Errorf("response for instance error: %v", instanceIDs)
+		return 0
 	}
 
-	bkInstId, _ := strconv.Atoi(strings.TrimSpace(string(body)))
+	stringBody := strings.TrimSpace(string(body))
+	if stringBody == "" {
+		return 0
+	} else {
+		bkInstId, err = strconv.Atoi(stringBody)
+		if err != nil {
+			logrus.WithError(err).Errorf("parse body to bkInstId error: %v", instanceIDs)
+			return 0
+		}
+
+	}
+
 	return bkInstId
 }
 
 // requestDataId 获取监控对象data id
 func requestDataId(bkObjectId string) (bkDataId string) {
-	url := fmt.Sprintf("%s/get_obj_table_id/?bk_obj_id=%v", weopsOpenApiUrl, bkObjectId)
+	url := fmt.Sprintf("%s/get_obj_table_id/?bk_obj_id=%v", monitorCenterOpenApiUrl, bkObjectId)
 	httpClient := createHTTPClient()
 
 	body, err := sendHTTPRequest(url, httpClient, bkObjectId)
@@ -85,7 +98,7 @@ func requestDataId(bkObjectId string) (bkDataId string) {
 		re := regexp.MustCompile(`\d+`)
 		matches := re.FindAllString(result.Data, -1)
 		if len(matches) > 0 {
-			bkDataId = matches[0]
+			bkDataId = matches[len(matches)-1]
 		}
 	}
 
@@ -102,19 +115,20 @@ func createHTTPClient() *http.Client {
 }
 
 // sendHTTPRequest 发送 HTTP 请求并返回响应体内容
-func sendHTTPRequest(url string, httpClient *http.Client, logParams ...interface{}) ([]byte, error) {
+func sendHTTPRequest(url string, httpClient *http.Client, logParams ...interface{}) (body []byte, err error) {
 	response, err := httpClient.Get(url)
 	if err != nil {
-		logrus.WithError(err).Errorf("http get url error: %v", logParams...)
+		logrus.WithError(err).Errorf("sendHTTPRequest http get url error: %v", logParams...)
 		return nil, err
 	}
 	defer response.Body.Close()
 
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		logrus.WithError(err).Errorf("response error: %v", logParams...)
-		return nil, err
+	if response.StatusCode == http.StatusOK {
+		body, err = io.ReadAll(response.Body)
+		if err != nil {
+			logrus.WithError(err).Errorf("sendHTTPRequest response error: %v", logParams...)
+			return nil, err
+		}
 	}
-
 	return body, nil
 }

@@ -22,8 +22,10 @@ const (
 
 	AutoMate = "automate"
 
-	K8sPodObjectId  = "k8s_pod"
-	K8sNodeObjectId = "bk_node"
+	K8sPodObjectId       = "k8s_pod"
+	K8sNodeObjectId      = "bk_node"
+	K8sClusterObjectId   = "k8s_cluster"
+	K8sNameSpaceObjectId = "k8s_namespace"
 )
 
 // K8sPodMetrics k8s容器指标

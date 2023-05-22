@@ -49,7 +49,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		metricName := labels["__name__"]
 
 		// 提取维度信息
-		dimensions := map[string]interface{}{}
+		dimensions := make(map[string]interface{})
 
 		// 过滤指标
 		if labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels) {

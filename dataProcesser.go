@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -81,21 +82,29 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	dimensions["bk_data_id"] = getDataId(bkObjectId)
 
 	if bkObjectId == K8sPodObjectId {
-		dimensions["workload"] = getWorkloadID(dimensions["bk_inst_id"].(int))
+		dimensions["workload"] = getWorkloadID(instanceName, dimensions["bk_inst_id"].(int))
+		dimensions["pod_id"] = dimensions["bk_inst_id"]
+		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
+		dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, dimensions["namespace"].(string))
+	} else if bkObjectId == K8sNodeObjectId {
+		dimensions["cluster_id"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
+		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
+
 	}
 
 	return dimensions
 }
 
 func getDataId(bkObjectId string) (bkDataId string) {
-	if result, found := bkCache.Get(bkObjectId); found {
+	bkObjIdDataId := fmt.Sprintf("bkDataID@@%s", bkObjectId)
+	if result, found := bkCache.Get(bkObjIdDataId); found {
 		// Result found in cache, use it
 		logrus.Debugf("using data id cache for object: %v", bkObjectId)
 		return result.(string)
 	} else {
 		bkDataId = requestDataId(bkObjectId)
 		// Setting cache for data id
-		bkCache.Set(bkObjectId, bkDataId, time.Duration(cacheExpiration)*time.Second)
+		bkCache.Set(bkObjIdDataId, bkDataId, time.Duration(cacheExpiration)*time.Second)
 	}
 
 	return bkDataId
