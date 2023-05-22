@@ -87,17 +87,13 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	return dimensions
 }
 
-func getDataId(bkObjectId string) (bkDataId int) {
+func getDataId(bkObjectId string) (bkDataId string) {
 	if result, found := bkCache.Get(bkObjectId); found {
 		// Result found in cache, use it
 		logrus.Debugf("using data id cache for object: %v", bkObjectId)
-		return result.(int)
+		return result.(string)
 	} else {
-		query := "SELECT bk_data_id FROM home_application_customtstable WHERE id IN (SELECT JSON_EXTRACT(JSON_ARRAYAGG(bk_ts_table_ids), '$[0][0]') FROM home_application_monitorcentercustomts WHERE monitor_obj_id = (SELECT id FROM home_application_monitorobject WHERE bk_obj_id = ?))"
-		err := db.QueryRow(query, bkObjectId).Scan(&bkDataId)
-		if err != nil {
-			logrus.WithError(err).Errorf("find bk_obj_id [%s] data id error", bkObjectId)
-		}
+		bkDataId = requestDataId(bkObjectId)
 		// Setting cache for data id
 		bkCache.Set(bkObjectId, bkDataId, time.Duration(cacheExpiration)*time.Second)
 	}

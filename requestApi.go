@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -53,24 +55,66 @@ func getWorkloadID(podId int) (workloadId int) {
 
 // getId 获取不同的ID
 func getId(url string, instanceIDs ...interface{}) int {
-	// 创建一个不带代理的 HTTP Client
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			Proxy: nil,
-		},
-	}
-
-	response, err := httpClient.Get(url)
-	if err != nil {
-		logrus.WithError(err).Errorf("http get url error: %v", url)
-	}
-	defer response.Body.Close()
-
-	body, err := io.ReadAll(response.Body)
+	httpClient := createHTTPClient()
+	body, err := sendHTTPRequest(url, httpClient, instanceIDs...)
 	if err != nil {
 		logrus.WithError(err).Errorf("response for instance error: %v", instanceIDs)
 	}
 
 	bkInstId, _ := strconv.Atoi(strings.TrimSpace(string(body)))
 	return bkInstId
+}
+
+// requestDataId 获取监控对象data id
+func requestDataId(bkObjectId string) (bkDataId string) {
+	url := fmt.Sprintf("%s/get_obj_table_id/?bk_obj_id=%v", weopsOpenApiUrl, bkObjectId)
+	httpClient := createHTTPClient()
+
+	body, err := sendHTTPRequest(url, httpClient, bkObjectId)
+	if err != nil {
+		logrus.WithError(err).Errorf("response for data id error: %v", bkObjectId)
+	}
+
+	var result struct {
+		Result bool   `json:"result"`
+		Data   string `json:"data"`
+	}
+
+	err = json.Unmarshal(body, &result)
+	if err == nil && result.Result {
+		re := regexp.MustCompile(`\d+`)
+		matches := re.FindAllString(result.Data, -1)
+		if len(matches) > 0 {
+			bkDataId = matches[0]
+		}
+	}
+
+	return bkDataId
+}
+
+// createHTTPClient 创建一个不带代理的 HTTP Client
+func createHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			Proxy: nil,
+		},
+	}
+}
+
+// sendHTTPRequest 发送 HTTP 请求并返回响应体内容
+func sendHTTPRequest(url string, httpClient *http.Client, logParams ...interface{}) ([]byte, error) {
+	response, err := httpClient.Get(url)
+	if err != nil {
+		logrus.WithError(err).Errorf("http get url error: %v", logParams...)
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		logrus.WithError(err).Errorf("response error: %v", logParams...)
+		return nil, err
+	}
+
+	return body, nil
 }
