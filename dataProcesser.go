@@ -85,11 +85,17 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		dimensions["workload"] = getWorkloadID(instanceName, dimensions["bk_inst_id"].(int))
 		dimensions["pod_id"] = dimensions["bk_inst_id"]
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
-		dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, dimensions["namespace"].(string))
+		namespace, namespaceExist := dimensions["namespace"].(string)
+		if namespaceExist {
+			namespaceCluster := fmt.Sprintf("%v (%v)", namespace, dimensions["cluster"].(string))
+			dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, namespaceCluster)
+		} else {
+			logrus.Debugf("k8s pod metrics without namespace label: %v", dimensions["__name__"])
+			dimensions["namespace_id"] = 0
+		}
 	} else if bkObjectId == K8sNodeObjectId {
 		dimensions["cluster_id"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
-
 	}
 
 	return dimensions
@@ -108,4 +114,8 @@ func getDataId(bkObjectId string) (bkDataId string) {
 	}
 
 	return bkDataId
+}
+
+func nullIdHandler() {
+
 }
