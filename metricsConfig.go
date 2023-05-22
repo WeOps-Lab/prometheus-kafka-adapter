@@ -20,6 +20,8 @@ const (
 	SNMP       = "snmp"
 	Ipmi       = "ipmi"
 
+	AutoMate = "automate"
+
 	K8sPodObjectId  = "k8s_pod"
 	K8sNodeObjectId = "bk_node"
 )

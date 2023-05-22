@@ -18,7 +18,12 @@ func handleSpecialValue(value float64) float64 {
 
 // processData 标准化输出数据
 func processData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
-	timestamp := time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
+	var timestamp int64
+	if dimensions["protocol"] != AutoMate {
+		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
+	} else {
+		timestamp = dimensions["timestamp"].(int64)
+	}
 
 	// 删除无用数据
 	keysToDelete := []string{"__name__", "protocol", "job"}
@@ -47,12 +52,11 @@ func processData(metricName string, dimensions map[string]interface{}, sample pr
 
 // k8sMetricsPreHandler 判断k8s指标，并补充k8s类的bk_object_id
 func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
-	metricName := labels["__name__"]
-	if _, nodeMetricsExist := K8sNodeMetrics[metricName]; nodeMetricsExist {
+	if _, nodeMetricsExist := K8sNodeMetrics[labels["__name__"]]; nodeMetricsExist {
 		labels["bk_object_id"] = K8sNodeObjectId
 		labels["instance_name"] = labels["node"]
 		return true
-	} else if _, podMetricsExist := K8sPodMetrics[metricName]; podMetricsExist {
+	} else if _, podMetricsExist := K8sPodMetrics[labels["__name__"]]; podMetricsExist {
 		labels["bk_object_id"] = K8sPodObjectId
 		labels["instance_name"] = labels["uid"]
 		return true
