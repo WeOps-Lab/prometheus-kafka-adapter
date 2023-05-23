@@ -65,6 +65,7 @@ func getId(url string, instanceIDs ...interface{}) (bkInstId int) {
 
 	stringBody := strings.TrimSpace(string(body))
 	if stringBody == "" {
+		logrus.Debugf("empty value: %v, %v", instanceIDs, url)
 		return 0
 	} else {
 		bkInstId, err = strconv.Atoi(stringBody)

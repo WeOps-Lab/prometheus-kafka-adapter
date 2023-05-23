@@ -77,22 +77,25 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	bkObjectId := dimensions["bk_object_id"].(string)
 	instanceName := dimensions["instance_name"].(string)
 
+	// 第一层过滤k8s中无业务、实例的指标
 	dimensions["bk_inst_id"] = getK8sBkInstId(bkObjectId, instanceName)
+	if dimensions["bk_inst_id"].(int) == 0 {
+		return dimensions
+	}
+
 	dimensions["bk_biz_id"] = getBkBizId(bkObjectId, dimensions["bk_inst_id"].(int))
+	if dimensions["bk_biz_id"].(int) == 0 {
+		return dimensions
+	}
+
 	dimensions["bk_data_id"] = getDataId(bkObjectId)
 
+	// 第二层对node、pod分别处理
 	if bkObjectId == K8sPodObjectId {
 		dimensions["workload"] = getWorkloadID(instanceName, dimensions["bk_inst_id"].(int))
 		dimensions["pod_id"] = dimensions["bk_inst_id"]
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
-		namespace, namespaceExist := dimensions["namespace"].(string)
-		if namespaceExist {
-			namespaceCluster := fmt.Sprintf("%v (%v)", namespace, dimensions["cluster"].(string))
-			dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, namespaceCluster)
-		} else {
-			logrus.Debugf("k8s pod metrics without namespace label: %v", dimensions["__name__"])
-			dimensions["namespace_id"] = 0
-		}
+		dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster"].(string)))
 	} else if bkObjectId == K8sNodeObjectId {
 		dimensions["cluster_id"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
