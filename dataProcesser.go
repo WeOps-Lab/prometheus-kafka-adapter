@@ -51,10 +51,12 @@ func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
 	if _, nodeMetricsExist := K8sNodeMetrics[metricName]; nodeMetricsExist {
 		labels["bk_obj_id"] = K8sNodeObjectId
 		labels["instance_name"] = labels["node"]
+		labels["cluster_name"] = labels["cluster"]
 		return true
 	} else if _, podMetricsExist := K8sPodMetrics[metricName]; podMetricsExist {
 		labels["bk_obj_id"] = K8sPodObjectId
 		labels["instance_name"] = labels["uid"]
+		labels["cluster_name"] = labels["cluster"]
 		return true
 	} else {
 		return false
@@ -88,10 +90,13 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	// 第二层对node、pod分别处理
 	if bkObjectId == K8sPodObjectId {
 		dimensions["pod_id"] = dimensions["bk_inst_id"]
-		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
+		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string))
+		if dimensions["cluster"].(int) == 0 {
+			return dimensions
+		}
 		dimensions["workload"] = getWorkloadID(instanceName, dimensions["bk_inst_id"].(int))
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
-		dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster"].(string)))
+		dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
 		deleteUselessDimension(&dimensions, K8sPodDimension)
 	} else if bkObjectId == K8sNodeObjectId {
 		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
