@@ -117,6 +117,12 @@ func createHTTPClient() *http.Client {
 
 // sendHTTPRequest 发送 HTTP 请求并返回响应体内容
 func sendHTTPRequest(url string, httpClient *http.Client, logParams ...interface{}) (body []byte, err error) {
+	if _, found := httpCache.Get(url); found {
+		return []byte{}, nil
+	} else {
+		httpCache.Set(url, 1, time.Duration(cacheExpiration)*time.Second)
+	}
+
 	response, err := httpClient.Get(url)
 	if err != nil {
 		logrus.WithError(err).Errorf("sendHTTPRequest http get url error: %v", logParams...)

@@ -24,6 +24,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -53,7 +54,9 @@ var (
 	kafkaSaslPassword      = ""
 	serializer             Serializer
 	bkCache                *cache.Cache
+	httpCache              *cache.Cache
 	cacheExpiration        = int64(300)
+	mutex                  = sync.Mutex{}
 
 	metricsFilePath = "metrics.yaml"
 )
@@ -63,6 +66,7 @@ func init() {
 	logrus.SetOutput(os.Stdout)
 
 	bkCache = cache.New(5*time.Minute, 10*time.Minute)
+	httpCache = cache.New(5*time.Minute, 10*time.Minute)
 
 	if value := os.Getenv("BKAPP_WEOPS_APP_ID"); value != "" {
 		bkAppWeopsId = value
