@@ -30,9 +30,30 @@ const (
 
 // K8sPodMetrics k8s容器指标
 var K8sPodMetrics = make(map[string]string)
+var K8sPodDimension = map[string]bool{
+	"bk_data_id":    true,
+	"bk_biz_id":     true,
+	"bk_inst_id":    true,
+	"bk_obj_id":     true,
+	"cluster":       true,
+	"instance_name": true,
+	"namespace_id":  true,
+	"node_id":       true,
+	"pod_id":        true,
+	"workload":      true,
+}
 
 // K8sNodeMetrics k8s节点指标
 var K8sNodeMetrics = make(map[string]string)
+var K8sNodeDimension = map[string]bool{
+	"bk_data_id":    true,
+	"bk_biz_id":     true,
+	"bk_inst_id":    true,
+	"bk_obj_id":     true,
+	"cluster":       true,
+	"instance_name": true,
+	"node_id":       true,
+}
 
 type MetricsData struct {
 	Data []struct {

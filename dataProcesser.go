@@ -26,12 +26,6 @@ func processData(metricName string, dimensions map[string]interface{}, sample pr
 		timestamp = dimensions["timestamp"].(int64)
 	}
 
-	// 删除无用数据
-	keysToDelete := []string{"__name__", "protocol", "job"}
-	for _, key := range keysToDelete {
-		delete(dimensions, key)
-	}
-
 	handleData := MetricsData{
 		Data: []struct {
 			Dimension map[string]interface{} `json:"dimension"`
@@ -51,14 +45,15 @@ func processData(metricName string, dimensions map[string]interface{}, sample pr
 	return json.Marshal(handleData)
 }
 
-// k8sMetricsPreHandler 判断k8s指标，并补充k8s类的bk_object_id
+// k8sMetricsPreHandler 判断k8s指标，并补充k8s类的bk_obj_id
 func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
-	if _, nodeMetricsExist := K8sNodeMetrics[labels["__name__"]]; nodeMetricsExist {
-		labels["bk_object_id"] = K8sNodeObjectId
+	metricName := labels["__name__"]
+	if _, nodeMetricsExist := K8sNodeMetrics[metricName]; nodeMetricsExist {
+		labels["bk_obj_id"] = K8sNodeObjectId
 		labels["instance_name"] = labels["node"]
 		return true
-	} else if _, podMetricsExist := K8sPodMetrics[labels["__name__"]]; podMetricsExist {
-		labels["bk_object_id"] = K8sPodObjectId
+	} else if _, podMetricsExist := K8sPodMetrics[metricName]; podMetricsExist {
+		labels["bk_obj_id"] = K8sPodObjectId
 		labels["instance_name"] = labels["uid"]
 		return true
 	} else {
@@ -74,7 +69,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		dimensions[key] = value
 	}
 
-	bkObjectId := dimensions["bk_object_id"].(string)
+	bkObjectId := dimensions["bk_obj_id"].(string)
 	instanceName := dimensions["instance_name"].(string)
 
 	// 第一层过滤k8s中无业务、实例的指标
@@ -92,13 +87,16 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 
 	// 第二层对node、pod分别处理
 	if bkObjectId == K8sPodObjectId {
-		dimensions["workload"] = getWorkloadID(instanceName, dimensions["bk_inst_id"].(int))
 		dimensions["pod_id"] = dimensions["bk_inst_id"]
+		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
+		dimensions["workload"] = getWorkloadID(instanceName, dimensions["bk_inst_id"].(int))
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
 		dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster"].(string)))
+		deleteUselessDimension(&dimensions, K8sPodDimension)
 	} else if bkObjectId == K8sNodeObjectId {
-		dimensions["cluster_id"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
+		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
+		deleteUselessDimension(&dimensions, K8sNodeDimension)
 	}
 
 	return dimensions
@@ -119,6 +117,39 @@ func getDataId(bkObjectId string) (bkDataId string) {
 	return bkDataId
 }
 
-func nullIdHandler() {
+func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions map[string]bool) {
+	for key := range *dimensions {
+		if !objDimensions[key] {
+			delete(*dimensions, key)
+		}
+	}
+}
 
+// dropMetrics 补充信息后，过滤出可用指标
+func dropMetrics(dimensions map[string]interface{}) bool {
+
+	// 丢弃业务id和实例id为0的指标
+	if dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0 {
+		return true
+	}
+
+	if dimensions["bk_data_id"] != "" {
+		kafkaTopic = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
+	} else {
+		return true
+	}
+
+	// 过滤缺少重要信息的指标
+	switch dimensions["bk_obj_id"].(string) {
+	case K8sPodObjectId:
+		if dimensions["cluster"].(int) == 0 || dimensions["namespace_id"].(int) == 0 {
+			return true
+		}
+	case K8sNodeObjectId:
+		if dimensions["cluster"].(int) == 0 {
+			return true
+		}
+	}
+
+	return false
 }

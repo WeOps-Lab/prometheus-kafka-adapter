@@ -17,7 +17,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/linkedin/goavro"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/sirupsen/logrus"
@@ -58,15 +57,8 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			continue
 		}
 
-		// 丢弃业务id和实例id为0的指标
-		if dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0 {
+		if dropMetrics(dimensions) {
 			continue
-		}
-
-		if dimensions["bk_data_id"] != "" {
-			kafkaTopic = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
-		} else {
-			kafkaTopic = topic(labels)
 		}
 
 		for _, sample := range ts.Samples {
