@@ -166,16 +166,13 @@ func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions ma
 
 // dropMetrics 补充信息后，过滤出可用指标
 func dropMetrics(dimensions map[string]interface{}) bool {
-
 	// 丢弃业务id和实例id为0的指标
 	if dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0 {
 		return true
 	}
 
-	if val, ok := dimensions["bk_data_id"]; ok && val != nil {
-		kafkaTopic = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
-	} else {
-		return false
+	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
+		return true
 	}
 
 	// 过滤缺少重要信息的指标
