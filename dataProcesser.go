@@ -96,19 +96,19 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	if bkInstId != 0 {
 		dimensions["bk_inst_id"] = bkInstId
 	} else {
-		return
+		return nil
 	}
 
 	if val, ok := dimensions["bk_biz_id"]; !ok || val == nil {
 		if bkBizId = getBkBizId(bkObjectId, bkInstId); bkBizId == 0 {
-			return dimensions
+			return nil
 		}
 		dimensions["bk_biz_id"] = bkBizId
 	}
 
 	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
 		if bkDataId = getDataId(bkObjectId); bkDataId == "" {
-			return
+			return nil
 		}
 		dimensions["bk_data_id"] = bkDataId
 	}
@@ -118,7 +118,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		dimensions["pod_id"] = bkInstId
 		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string))
 		if dimensions["cluster"].(int) == 0 {
-			return
+			return nil
 		}
 		dimensions["workload"] = getWorkloadID(dimensions["instance_name"].(string), bkInstId)
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
@@ -166,6 +166,10 @@ func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions ma
 
 // dropMetrics 补充信息后，过滤出可用指标
 func dropMetrics(dimensions map[string]interface{}) bool {
+	if dimensions == nil {
+		return true
+	}
+
 	// 丢弃业务id和实例id为0的指标
 	if dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0 {
 		return true
