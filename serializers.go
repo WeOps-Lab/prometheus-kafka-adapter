@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/linkedin/goavro"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/sirupsen/logrus"
@@ -62,6 +63,9 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			continue
 		}
 
+		t := fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
+		delete(dimensions, "bk_data_id")
+
 		for _, sample := range ts.Samples {
 			if !filter(metricName, labels) {
 				objectsFiltered.Add(float64(1))
@@ -76,7 +80,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			}
 
 			serializeTotal.Add(float64(1))
-			result[kafkaTopic] = append(result[kafkaTopic], data)
+			result[t] = append(result[t], data)
 		}
 	}
 
