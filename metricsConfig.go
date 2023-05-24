@@ -15,13 +15,10 @@
 package main
 
 const (
-	Protocol   = "protocol"
-	Kubernetes = "kubernetes"
-	SNMP       = "snmp"
-	Ipmi       = "ipmi"
-
-	AutoMate = "automate"
-
+	Protocol             = "protocol"
+	Kubernetes           = "kubernetes"
+	SNMP                 = "snmp"
+	IPMI                 = "ipmi"
 	K8sPodObjectId       = "k8s_pod"
 	K8sNodeObjectId      = "bk_node"
 	K8sClusterObjectId   = "k8s_cluster"
@@ -41,6 +38,25 @@ var K8sPodDimension = map[string]bool{
 	"node_id":       true,
 	"pod_id":        true,
 	"workload":      true,
+}
+var CommonDimensionFilter = map[string]bool{
+	"name":        true,
+	"user":        true,
+	"users":       true,
+	"queries":     true,
+	"database":    true,
+	"databases":   true,
+	"field":       true,
+	"group":       true,
+	"groups":      true,
+	"info":        true,
+	"offset":      true,
+	"replication": true,
+	"values":      true,
+	"shard":       true,
+	"tag":         true,
+	"__name__":    true,
+	"job":         true,
 }
 
 // K8sNodeMetrics k8s节点指标

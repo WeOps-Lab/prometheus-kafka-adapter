@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/sirupsen/logrus"
 	"math"
+	"strconv"
 	"time"
 )
 
@@ -20,7 +21,7 @@ func handleSpecialValue(value float64) float64 {
 // processData 标准化输出数据
 func processData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
 	var timestamp int64
-	if dimensions["protocol"] != AutoMate {
+	if dimensions["protocol"] != "cloud" {
 		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
 	} else {
 		timestamp = dimensions["timestamp"].(int64)
@@ -71,43 +72,73 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		dimensions[key] = value
 	}
 
-	bkObjectId := dimensions["bk_obj_id"].(string)
-	instanceName := dimensions["instance_name"].(string)
+	var (
+		bkInstId   int
+		bkBizId    int
+		bkDataId   string
+		bkObjectId = dimensions["bk_obj_id"].(string)
+	)
 
-	// 第一层过滤k8s中无业务、实例的指标
-	dimensions["bk_inst_id"] = getK8sBkInstId(bkObjectId, instanceName)
-	if dimensions["bk_inst_id"].(int) == 0 {
-		return dimensions
+	// 第一层过滤无业务、实例的指标
+	if val, ok := dimensions["bk_inst_id"]; !ok {
+		bkInstId = getK8sBkInstId(bkObjectId, dimensions["instance_name"].(string))
+	} else {
+		switch val.(type) {
+		case int:
+			bkInstId = val.(int)
+		case string:
+			bkInstId, _ = strconv.Atoi(val.(string))
+		default:
+			bkInstId = 0
+		}
 	}
 
-	dimensions["bk_biz_id"] = getBkBizId(bkObjectId, dimensions["bk_inst_id"].(int))
-	if dimensions["bk_biz_id"].(int) == 0 {
-		return dimensions
+	if bkInstId != 0 {
+		dimensions["bk_inst_id"] = bkInstId
+	} else {
+		return
 	}
 
-	dimensions["bk_data_id"] = getDataId(bkObjectId)
-	if dimensions["bk_data_id"].(string) == "" {
-		return dimensions
+	if val, ok := dimensions["bk_biz_id"]; !ok || val == nil {
+		if bkBizId = getBkBizId(bkObjectId, bkInstId); bkBizId == 0 {
+			return dimensions
+		}
+		dimensions["bk_biz_id"] = bkBizId
+	}
+
+	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
+		if bkDataId = getDataId(bkObjectId); bkDataId == "" {
+			return
+		}
+		dimensions["bk_data_id"] = bkDataId
 	}
 
 	// 第二层对node、pod分别处理
 	if bkObjectId == K8sPodObjectId {
-		dimensions["pod_id"] = dimensions["bk_inst_id"]
+		dimensions["pod_id"] = bkInstId
 		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string))
 		if dimensions["cluster"].(int) == 0 {
-			return dimensions
+			return
 		}
-		dimensions["workload"] = getWorkloadID(instanceName, dimensions["bk_inst_id"].(int))
+		dimensions["workload"] = getWorkloadID(dimensions["instance_name"].(string), bkInstId)
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
 		dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
-		deleteUselessDimension(&dimensions, K8sPodDimension)
+		deleteUselessDimension(&dimensions, K8sPodDimension, true)
 	} else if bkObjectId == K8sNodeObjectId {
 		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
-		deleteUselessDimension(&dimensions, K8sNodeDimension)
+		deleteUselessDimension(&dimensions, K8sNodeDimension, true)
 	}
 
-	return dimensions
+	if dimensions["protocol"] == SNMP {
+		dimensions["instance_name"] = dimensions["bk_inst_name"]
+		delete(dimensions, "bk_inst_name")
+	} else if dimensions["protocol"] == IPMI {
+		dimensions["instance_name"] = dimensions["bk_inst_name"]
+	}
+
+	deleteUselessDimension(&dimensions, CommonDimensionFilter, false)
+	return
 }
 
 func getDataId(bkObjectId string) (bkDataId string) {
@@ -125,9 +156,9 @@ func getDataId(bkObjectId string) (bkDataId string) {
 	return bkDataId
 }
 
-func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions map[string]bool) {
+func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions map[string]bool, keep bool) {
 	for key := range *dimensions {
-		if !objDimensions[key] {
+		if (!objDimensions[key] && keep) || (objDimensions[key] && !keep) {
 			delete(*dimensions, key)
 		}
 	}
@@ -141,10 +172,10 @@ func dropMetrics(dimensions map[string]interface{}) bool {
 		return true
 	}
 
-	if dimensions["bk_data_id"] != "" {
+	if val, ok := dimensions["bk_data_id"]; ok && val != nil {
 		kafkaTopic = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
 	} else {
-		return true
+		return false
 	}
 
 	// 过滤缺少重要信息的指标
