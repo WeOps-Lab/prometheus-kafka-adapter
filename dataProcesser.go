@@ -128,10 +128,16 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
 		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
 		deleteUselessDimension(&dimensions, K8sNodeDimension, true)
-	} else {
-		deleteUselessDimension(&dimensions, CommonDimensionFilter, false)
 	}
 
+	if dimensions["protocol"] == SNMP {
+		dimensions["instance_name"] = dimensions["bk_inst_name"]
+		delete(dimensions, "bk_inst_name")
+	} else if dimensions["protocol"] == IPMI {
+		dimensions["instance_name"] = dimensions["bk_inst_name"]
+	}
+
+	deleteUselessDimension(&dimensions, CommonDimensionFilter, false)
 	return
 }
 
