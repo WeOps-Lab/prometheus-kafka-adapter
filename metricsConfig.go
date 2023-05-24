@@ -15,13 +15,10 @@
 package main
 
 const (
-	Protocol   = "protocol"
-	Kubernetes = "kubernetes"
-	SNMP       = "snmp"
-	IPMI       = "ipmi"
-
-	AutoMate = "automate"
-
+	Protocol             = "protocol"
+	Kubernetes           = "kubernetes"
+	SNMP                 = "snmp"
+	IPMI                 = "ipmi"
 	K8sPodObjectId       = "k8s_pod"
 	K8sNodeObjectId      = "bk_node"
 	K8sClusterObjectId   = "k8s_cluster"

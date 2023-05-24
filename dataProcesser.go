@@ -21,7 +21,7 @@ func handleSpecialValue(value float64) float64 {
 // processData 标准化输出数据
 func processData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
 	var timestamp int64
-	if dimensions["protocol"] != AutoMate {
+	if dimensions["protocol"] != "cloud" {
 		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
 	} else {
 		timestamp = dimensions["timestamp"].(int64)
