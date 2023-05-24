@@ -86,6 +86,9 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	}
 
 	dimensions["bk_data_id"] = getDataId(bkObjectId)
+	if dimensions["bk_data_id"].(string) == "" {
+		return dimensions
+	}
 
 	// 第二层对node、pod分别处理
 	if bkObjectId == K8sPodObjectId {
