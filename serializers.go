@@ -51,12 +51,13 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		dimensions := make(map[string]interface{})
 
 		// 过滤指标
-		if labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels) {
+		if (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI {
 			dimensions = fillUpBkInfo(labels)
 		} else {
 			continue
 		}
 
+		// 过滤缺少重要信息的指标
 		if dropMetrics(dimensions) {
 			continue
 		}

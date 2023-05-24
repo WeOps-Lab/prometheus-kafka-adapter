@@ -18,7 +18,7 @@ const (
 	Protocol   = "protocol"
 	Kubernetes = "kubernetes"
 	SNMP       = "snmp"
-	Ipmi       = "ipmi"
+	IPMI       = "ipmi"
 
 	AutoMate = "automate"
 
@@ -41,6 +41,23 @@ var K8sPodDimension = map[string]bool{
 	"node_id":       true,
 	"pod_id":        true,
 	"workload":      true,
+}
+var CommonDimensionFilter = map[string]bool{
+	"name":        true,
+	"user":        true,
+	"users":       true,
+	"queries":     true,
+	"database":    true,
+	"databases":   true,
+	"field":       true,
+	"group":       true,
+	"groups":      true,
+	"info":        true,
+	"offset":      true,
+	"replication": true,
+	"values":      true,
+	"shard":       true,
+	"tag":         true,
 }
 
 // K8sNodeMetrics k8s节点指标
