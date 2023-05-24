@@ -43,6 +43,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 
 		// 必须带有protocol字段才会当做处理指标
 		if _, protocolExist := labels[Protocol]; !protocolExist {
+			weopsProtocolMetricsFiltered.Add(float64(1))
 			continue
 		}
 
@@ -55,11 +56,13 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		if (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI {
 			dimensions = fillUpBkInfo(labels)
 		} else {
+			weopsMetricsFiltered.WithLabelValues(labels[Protocol]).Add(float64(1))
 			continue
 		}
 
 		// 过滤缺少重要信息的指标
 		if dropMetrics(dimensions) {
+			weopsMetricsDropped.WithLabelValues(labels[Protocol]).Add(float64(1))
 			continue
 		}
 

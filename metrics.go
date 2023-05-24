@@ -52,6 +52,28 @@ var (
 			Name: "objects_failed_total",
 			Help: "Count of all objects write failures to Kafka",
 		})
+
+	weopsProtocolMetricsFiltered = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "weops_protocol_metrics_filtered_total",
+			Help: "Count of all protocol filter metrics",
+		})
+
+	weopsMetricsFiltered = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "weops_metrics_filtered_total",
+			Help: "Count of all weops filter metrics",
+		},
+		[]string{"protocol"},
+	)
+
+	weopsMetricsDropped = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "weops_metrics_dropped_total",
+			Help: "Count of all weops drop metrics",
+		},
+		[]string{"protocol"},
+	)
 )
 
 func init() {
@@ -62,4 +84,7 @@ func init() {
 	prometheus.MustRegister(objectsFiltered)
 	prometheus.MustRegister(objectsFailed)
 	prometheus.MustRegister(objectsWritten)
+	prometheus.MustRegister(weopsProtocolMetricsFiltered)
+	prometheus.MustRegister(weopsMetricsFiltered)
+	prometheus.MustRegister(weopsMetricsDropped)
 }
