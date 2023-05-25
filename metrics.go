@@ -55,16 +55,16 @@ var (
 
 	weopsProtocolMetricsFiltered = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "weops_protocol_metrics_filtered_total",
-			Help: "Count of all protocol filter metrics",
+			Name: "weops_metrics_filtered_total",
+			Help: "Count of all weops filter metrics",
 		})
 
 	weopsMetricsFiltered = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "weops_metrics_filtered_total",
-			Help: "Count of all weops filter metrics",
+			Name: "weops_protocol_metrics_filtered_total",
+			Help: "Count of all protocol filter metrics",
 		},
-		[]string{"protocol"},
+		[]string{Protocol},
 	)
 
 	weopsMetricsDropped = prometheus.NewCounterVec(
@@ -72,7 +72,7 @@ var (
 			Name: "weops_metrics_dropped_total",
 			Help: "Count of all weops drop metrics",
 		},
-		[]string{"protocol"},
+		[]string{Protocol},
 	)
 )
 

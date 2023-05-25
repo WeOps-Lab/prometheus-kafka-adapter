@@ -21,10 +21,14 @@ func handleSpecialValue(value float64) float64 {
 // processData 标准化输出数据
 func processData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
 	var timestamp int64
-	if dimensions["protocol"] != "cloud" {
+	if dimensions[Protocol] != CLOUD {
 		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
 	} else {
-		timestamp = dimensions["timestamp"].(int64)
+		timestamp, err = strconv.ParseInt(dimensions["metric_timestamp"].(string), 10, 64)
+		if err != nil {
+			logrus.WithError(err).Errorf("%v parse timestamp error", dimensions[Protocol])
+		}
+		delete(dimensions, "metric_timestamp")
 	}
 
 	handleData := MetricsData{
@@ -99,11 +103,25 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		return nil
 	}
 
-	if val, ok := dimensions["bk_biz_id"]; !ok || val == nil {
-		if bkBizId = getBkBizId(bkObjectId, bkInstId); bkBizId == 0 {
+	if val, ok := dimensions["bk_biz_id"]; !ok {
+		bkBizId = getBkBizId(bkObjectId, bkInstId)
+	} else {
+		switch val.(type) {
+		case int:
+			bkBizId = val.(int)
+		case string:
+			bkBizId, _ = strconv.Atoi(val.(string))
+		default:
+			bkBizId = 0
+		}
+	}
+
+	if bkBizId != 0 {
+		dimensions["bk_biz_id"] = bkBizId
+	} else {
+		if dimensions[Protocol] != CLOUD {
 			return nil
 		}
-		dimensions["bk_biz_id"] = bkBizId
 	}
 
 	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
@@ -130,10 +148,10 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		deleteUselessDimension(&dimensions, K8sNodeDimension, true)
 	}
 
-	if dimensions["protocol"] == SNMP {
+	if dimensions[Protocol] == SNMP {
 		dimensions["instance_name"] = dimensions["bk_inst_name"]
 		delete(dimensions, "bk_inst_name")
-	} else if dimensions["protocol"] == IPMI {
+	} else if dimensions[Protocol] == IPMI {
 		dimensions["instance_name"] = dimensions["bk_inst_name"]
 	}
 
@@ -171,7 +189,7 @@ func dropMetrics(dimensions map[string]interface{}) bool {
 	}
 
 	// 丢弃业务id和实例id为0的指标
-	if dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0 {
+	if dimensions[Protocol] != CLOUD && (dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0) {
 		return true
 	}
 
