@@ -19,6 +19,7 @@ const (
 	Kubernetes           = "kubernetes"
 	SNMP                 = "snmp"
 	IPMI                 = "ipmi"
+	CLOUD                = "cloud"
 	K8sPodObjectId       = "k8s_pod"
 	K8sNodeObjectId      = "bk_node"
 	K8sClusterObjectId   = "k8s_cluster"

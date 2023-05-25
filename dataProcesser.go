@@ -21,10 +21,13 @@ func handleSpecialValue(value float64) float64 {
 // processData 标准化输出数据
 func processData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
 	var timestamp int64
-	if dimensions["protocol"] != "cloud" {
+	if dimensions[Protocol] != CLOUD {
 		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
 	} else {
-		timestamp = dimensions["timestamp"].(int64)
+		timestamp, err = strconv.ParseInt(dimensions["metric_timestamp"].(string), 10, 64)
+		if err != nil {
+			logrus.WithError(err).Errorf("%v parse timestamp error", dimensions[Protocol])
+		}
 	}
 
 	handleData := MetricsData{
