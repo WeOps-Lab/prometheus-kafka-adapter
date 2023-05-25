@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: weops-kafka-adapter
+  namespace: weops-kafka-adapter
+spec:
+  serviceName: weops-kafka-adapter
+  replicas: 1
+  selector:
+    matchLabels:
+      app: weops-kafka-adapter
+  template:
+    metadata:
+      annotations:
+        telegraf.influxdata.com/interval: 1s
+        telegraf.influxdata.com/inputs: |+
+          [[inputs.cpu]]
+            percpu = false
+            totalcpu = true
+            collect_cpu_time = true
+            report_active = true
+
+          [[inputs.disk]]
+            ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
+
+          [[inputs.diskio]]
+
+          [[inputs.kernel]]
+
+          [[inputs.mem]]
+
+          [[inputs.processes]]
+
+          [[inputs.system]]
+            fielddrop = ["uptime_format"]
+
+          [[inputs.net]]
+            ignore_protocol_stats = true
+
+          [[inputs.procstat]]
+          ## pattern as argument for pgrep (ie, pgrep -f <pattern>)
+            pattern = "prometheus-kafka-adapter"
+        telegraf.influxdata.com/class: opentsdb
+        telegraf.influxdata.com/env-fieldref-NAMESPACE: metadata.namespace
+        telegraf.influxdata.com/limits-cpu: '3000m'
+        telegraf.influxdata.com/limits-memory: '1000Mi'
+      labels:
+        app: weops-kafka-adapter
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: 10.10.90.113
+      shareProcessNamespace: true
+      volumes:
+      - name: k8s-metrics
+        hostPath:
+          path: /data/fzm/code/prometheus-kafka-adapter/metrics.yaml
+      containers:
+      - name: weops-kafka-adapter
+        image: registry-svc:25000/library/weops-kafka-adapter:latest
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: k8s-metrics
+          mountPath: /metrics.yaml
+          readOnly: true
+        envFrom:
+          - configMapRef:
+              name: weops-kafka-adapter-env
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 2000m
+            memory: 3000Mi
+        ports:
+        - containerPort: 8090
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: weops-kafka-adapter
+  name: weops-kafka-adapter
+  namespace: weops-kafka-adapter
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8090"
+    prometheus.io/path: '/metrics'
+spec:
+  type: NodePort
+  ports:
+  - port: 8090
+    protocol: TCP
+    targetPort: 8090
+    nodePort:
+  selector:
+    app: weops-kafka-adapter
