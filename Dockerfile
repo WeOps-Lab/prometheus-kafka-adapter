@@ -11,6 +11,7 @@ RUN go build -ldflags='-w -s -extldflags "-static"' -tags musl,static,netgo -mod
 FROM alpine:3.16
 
 COPY schemas/metric.avsc /schemas/metric.avsc
+COPY metrics.yaml /metrics.yaml
 COPY --from=build /prometheus-kafka-adapter /
 
 CMD /prometheus-kafka-adapter
