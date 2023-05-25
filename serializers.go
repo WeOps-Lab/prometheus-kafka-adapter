@@ -49,18 +49,24 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 
 		// 提取维度信息
 		dimensions := make(map[string]interface{})
-
+		protocol := labels[Protocol]
 		// 过滤指标
-		if labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels) {
-			dimensions = fillUpBkInfo(labels)
-		} else {
+		switch protocol {
+		case Kubernetes:
+			if k8sMetricsPreHandler(labels) {
+				dimensions = fillUpBkInfo(labels)
+			}
+		case Cloud:
+			dimensions = cloudFillUpBkInfo(labels)
+			goto LOOP
+		default:
 			continue
 		}
 
 		if dropMetrics(dimensions) {
 			continue
 		}
-
+	LOOP:
 		for _, sample := range ts.Samples {
 			if !filter(metricName, labels) {
 				objectsFiltered.Add(float64(1))

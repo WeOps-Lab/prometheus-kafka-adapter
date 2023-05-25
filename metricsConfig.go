@@ -20,6 +20,7 @@ const (
 	SNMP       = "snmp"
 	Ipmi       = "ipmi"
 
+	Cloud    = "cloud"
 	AutoMate = "automate"
 
 	K8sPodObjectId       = "k8s_pod"

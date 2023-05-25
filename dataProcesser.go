@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/sirupsen/logrus"
 	"math"
+	"strconv"
 	"time"
 )
 
@@ -20,12 +21,11 @@ func handleSpecialValue(value float64) float64 {
 // processData 标准化输出数据
 func processData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
 	var timestamp int64
-	if dimensions["protocol"] != AutoMate {
+	if dimensions["protocol"] != Cloud {
 		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
 	} else {
-		timestamp = dimensions["timestamp"].(int64)
+		timestamp, _ = strconv.ParseInt(dimensions["metric_timestamp"].(string), 10, 64)
 	}
-
 	handleData := MetricsData{
 		Data: []struct {
 			Dimension map[string]interface{} `json:"dimension"`
@@ -104,6 +104,21 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		deleteUselessDimension(&dimensions, K8sNodeDimension)
 	}
 
+	return dimensions
+}
+
+// cloudFillUpBkInfo Automate云监控处理
+func cloudFillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) {
+	// 先填入所有维度信息
+	dimensions = make(map[string]interface{})
+	for key, value := range labels {
+		dimensions[key] = value
+	}
+
+	bkObjectId := dimensions["bk_obj_id"].(string)
+	dimensions["bk_data_id"] = getDataId(bkObjectId)
+	dimensions["bk_inst_id"], _ = strconv.Atoi(dimensions["bk_inst_id"].(string))
+	dimensions["bk_biz_id"], _ = strconv.Atoi(dimensions["bk_biz_id"].(string))
 	return dimensions
 }
 
