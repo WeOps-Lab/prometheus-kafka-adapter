@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <option name="projectDefaultTargetUuid" value="6803b01c-3127-4129-b2db-53bef181aa40" />
+    <targets>
+      <target name="root@10.11.25.49:22" type="ssh/sftp" uuid="6803b01c-3127-4129-b2db-53bef181aa40">
+        <config>
+          <option name="projectRootOnTarget" value="/data/fzm/code" />
+          <option name="serverName" value="root@10.11.25.49:22 password" />
+          <option name="useRsync" value="true" />
+        </config>
+        <ContributedStateBase type="GoLanguageRuntime">
+          <config>
+            <option name="goPath" value="/data/go" />
+            <option name="goRoot" value="/data/go/bin/go" />
+          </config>
+        </ContributedStateBase>
+      </target>
+      <target name="root@10.10.90.113:22" type="ssh/sftp" uuid="094d1b07-8889-4b4c-8732-c7ffee510cc5">
+        <config>
+          <option name="projectRootOnTarget" value="/data/fzm/code/prometheus-kafka-adapter" />
+          <option name="serverName" value="root@10.10.90.113:22 agent" />
+          <option name="useRsync" value="true" />
+        </config>
+        <ContributedStateBase type="GoLanguageRuntime">
+          <config>
+            <option name="goPath" value="/root/go" />
+            <option name="goRoot" value="/data/go/bin/go" />
+            <option name="goVersion" value="go1.20.1 linux/amd64" />
+          </config>
+        </ContributedStateBase>
+      </target>
+    </targets>
+  </component>
+</project>
