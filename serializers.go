@@ -83,6 +83,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			}
 
 			serializeTotal.Add(float64(1))
+			weopsTopicSerializeTotal.WithLabelValues(dimensions["bk_obj_id"].(string), t).Add(float64(1))
 			result[t] = append(result[t], data)
 		}
 	}

@@ -74,6 +74,14 @@ var (
 		},
 		[]string{Protocol},
 	)
+
+	weopsTopicSerializeTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "weops_metrics_topic_serialized_total",
+			Help: "Count of each topic serialization requests",
+		},
+		[]string{"bk_object_id", "topic"},
+	)
 )
 
 func init() {
@@ -87,4 +95,5 @@ func init() {
 	prometheus.MustRegister(weopsProtocolMetricsFiltered)
 	prometheus.MustRegister(weopsMetricsFiltered)
 	prometheus.MustRegister(weopsMetricsDropped)
+	prometheus.MustRegister(weopsTopicSerializeTotal)
 }
