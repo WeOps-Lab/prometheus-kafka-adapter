@@ -52,18 +52,10 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: 10.10.90.113
       shareProcessNamespace: true
-      volumes:
-      - name: k8s-metrics
-        hostPath:
-          path: /data/fzm/code/prometheus-kafka-adapter/metrics.yaml
       containers:
       - name: weops-kafka-adapter
         image: registry-svc:25000/library/weops-kafka-adapter:latest
         imagePullPolicy: Always
-        volumeMounts:
-        - name: k8s-metrics
-          mountPath: /metrics.yaml
-          readOnly: true
         envFrom:
           - configMapRef:
               name: weops-kafka-adapter-env
@@ -75,8 +67,8 @@ spec:
             cpu: 100m
             memory: 100Mi
           limits:
-            cpu: 2000m
-            memory: 3000Mi
+            cpu: 1000m
+            memory: 1000Mi
         ports:
         - containerPort: 8090
 

@@ -24,11 +24,12 @@ const (
 	K8sNodeObjectId      = "bk_node"
 	K8sClusterObjectId   = "k8s_cluster"
 	K8sNameSpaceObjectId = "k8s_namespace"
+	K8sWorkloadObjectId  = "k8s_workload"
 )
 
 // K8sPodMetrics k8s容器指标
 var K8sPodMetrics = make(map[string]string)
-var K8sPodDimension = map[string]bool{
+var k8sPodDimension = map[string]bool{
 	"bk_data_id":    true,
 	"bk_biz_id":     true,
 	"bk_inst_id":    true,
@@ -40,7 +41,7 @@ var K8sPodDimension = map[string]bool{
 	"pod_id":        true,
 	"workload":      true,
 }
-var CommonDimensionFilter = map[string]bool{
+var commonDimensionFilter = map[string]bool{
 	"name":        true,
 	"user":        true,
 	"users":       true,
@@ -62,7 +63,7 @@ var CommonDimensionFilter = map[string]bool{
 
 // K8sNodeMetrics k8s节点指标
 var K8sNodeMetrics = make(map[string]string)
-var K8sNodeDimension = map[string]bool{
+var k8sNodeDimension = map[string]bool{
 	"bk_data_id":    true,
 	"bk_biz_id":     true,
 	"bk_inst_id":    true,

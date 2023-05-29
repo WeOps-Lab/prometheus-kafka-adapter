@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,8 +19,8 @@ func handleSpecialValue(value float64) float64 {
 	return value
 }
 
-// processData 标准化输出数据
-func processData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
+// formatMetricsData 标准化输出数据
+func formatMetricsData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
 	var timestamp int64
 	if dimensions[Protocol] != CLOUD {
 		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
@@ -53,12 +54,21 @@ func processData(metricName string, dimensions map[string]interface{}, sample pr
 // k8sMetricsPreHandler 判断k8s指标，并补充k8s类的bk_obj_id
 func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
 	metricName := labels["__name__"]
+	if _, ok := labels["node"]; !ok {
+		return false
+	}
+	if _, ok := labels["cluster"]; !ok {
+		return false
+	}
 	if _, nodeMetricsExist := K8sNodeMetrics[metricName]; nodeMetricsExist {
 		labels["bk_obj_id"] = K8sNodeObjectId
 		labels["instance_name"] = labels["node"]
 		labels["cluster_name"] = labels["cluster"]
 		return true
 	} else if _, podMetricsExist := K8sPodMetrics[metricName]; podMetricsExist {
+		if _, ok := labels["pod"]; !ok {
+			return false
+		}
 		labels["bk_obj_id"] = K8sPodObjectId
 		labels["instance_name"] = labels["uid"]
 		labels["cluster_name"] = labels["cluster"]
@@ -80,49 +90,9 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		bkInstId   int
 		bkBizId    int
 		bkDataId   string
+		protocol   = dimensions[Protocol].(string)
 		bkObjectId = dimensions["bk_obj_id"].(string)
 	)
-
-	// 第一层过滤无业务、实例的指标
-	if val, ok := dimensions["bk_inst_id"]; !ok {
-		bkInstId = getK8sBkInstId(bkObjectId, dimensions["instance_name"].(string))
-	} else {
-		switch val.(type) {
-		case int:
-			bkInstId = val.(int)
-		case string:
-			bkInstId, _ = strconv.Atoi(val.(string))
-		default:
-			bkInstId = 0
-		}
-	}
-
-	if bkInstId != 0 {
-		dimensions["bk_inst_id"] = bkInstId
-	} else {
-		return nil
-	}
-
-	if val, ok := dimensions["bk_biz_id"]; !ok {
-		bkBizId = getBkBizId(bkObjectId, bkInstId)
-	} else {
-		switch val.(type) {
-		case int:
-			bkBizId = val.(int)
-		case string:
-			bkBizId, _ = strconv.Atoi(val.(string))
-		default:
-			bkBizId = 0
-		}
-	}
-
-	if bkBizId != 0 {
-		dimensions["bk_biz_id"] = bkBizId
-	} else {
-		if dimensions[Protocol] != CLOUD {
-			return nil
-		}
-	}
 
 	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
 		if bkDataId = getDataId(bkObjectId); bkDataId == "" {
@@ -133,41 +103,104 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 
 	// 第二层对node、pod分别处理
 	if bkObjectId == K8sPodObjectId {
-		dimensions["pod_id"] = bkInstId
-		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string))
-		if dimensions["cluster"].(int) == 0 {
+		if bkInstId = getBkInstId(K8sPodObjectId, dimensions["instance_name"].(string)); bkInstId == 0 {
 			return nil
 		}
-		dimensions["workload"] = getWorkloadID(dimensions["instance_name"].(string), bkInstId)
-		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
-		dimensions["namespace_id"] = getK8sBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
-		deleteUselessDimension(&dimensions, K8sPodDimension, true)
+		dimensions["pod_id"] = bkInstId
+		dimensions["bk_inst_id"] = bkInstId
+
+		if clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string)); clusterId == 0 {
+			return nil
+		} else {
+			dimensions["cluster"] = clusterId
+		}
+
+		podWorkloadInfo, found := bkObjRelaCache.Get("pod_workload_rel_map")
+		if found {
+			if dimensions["workload"] = podWorkloadInfo.(map[int]int)[bkInstId]; dimensions["workload"].(int) == 0 {
+				return nil
+			}
+		}
+
+		dimensions["node_id"] = getBkInstId(K8sNodeObjectId, dimensions["node"].(string))
+		dimensions["namespace_id"] = getBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
+		namespaceId, ok := dimensions["namespace_id"].(int)
+		if !ok || namespaceId == 0 {
+			return nil
+		}
+
+		if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sNameSpaceObjectId)); bizFound {
+			if bizId, bizIdFound := bizInfo.(map[int]int)[namespaceId]; bizIdFound && bizId != 0 {
+				dimensions["bk_biz_id"] = bizId
+			} else {
+				return nil
+			}
+		}
+		k8sDimisionHandler(&dimensions, k8sPodDimension)
+		deleteUselessDimension(&dimensions, k8sPodDimension, true)
 	} else if bkObjectId == K8sNodeObjectId {
-		dimensions["cluster"] = getK8sBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
-		dimensions["node_id"] = getK8sBkInstId(K8sNodeObjectId, dimensions["node"].(string))
-		deleteUselessDimension(&dimensions, K8sNodeDimension, true)
+		if clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster"].(string)); clusterId == 0 {
+			return nil
+		} else {
+			dimensions["cluster"] = clusterId
+		}
+
+		dimensions["node_id"] = getBkInstId(K8sNodeObjectId, dimensions["node"].(string))
+		if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sClusterObjectId)); bizFound {
+			if bizId, bizIdFound := bizInfo.(map[int]int)[dimensions["cluster"].(int)]; bizIdFound && bizId != 0 {
+				dimensions["bk_biz_id"] = bizId
+			} else {
+				return nil
+			}
+		}
+		k8sDimisionHandler(&dimensions, k8sNodeDimension)
+		deleteUselessDimension(&dimensions, k8sNodeDimension, true)
 	}
 
-	if dimensions[Protocol] == SNMP {
+	if protocol == SNMP {
 		dimensions["instance_name"] = dimensions["bk_inst_name"]
 		delete(dimensions, "bk_inst_name")
-	} else if dimensions[Protocol] == IPMI {
+	} else if protocol == IPMI {
 		dimensions["instance_name"] = dimensions["bk_inst_name"]
 	}
 
-	deleteUselessDimension(&dimensions, CommonDimensionFilter, false)
+	if val, ok := dimensions["bk_inst_id"]; !ok {
+		bkInstId = getBkInstId(bkObjectId, dimensions["instance_name"].(string))
+	} else {
+		bkInstId = labelsIdValHandler(val)
+	}
+
+	if bkInstId != 0 {
+		dimensions["bk_inst_id"] = bkInstId
+	} else {
+		return nil
+	}
+
+	// 业务判断
+	if val, ok := dimensions["bk_biz_id"]; !ok {
+		bkBizId = getBkBizId(bkObjectId, bkInstId)
+	} else {
+		bkBizId = labelsIdValHandler(val)
+	}
+
+	if bkBizId != 0 {
+		dimensions["bk_biz_id"] = bkBizId
+	} else {
+		if protocol != CLOUD {
+			return nil
+		}
+	}
+
+	deleteUselessDimension(&dimensions, commonDimensionFilter, false)
 	return
 }
 
 func getDataId(bkObjectId string) (bkDataId string) {
-	bkObjIdDataId := fmt.Sprintf("bkDataID@@%s", bkObjectId)
+	bkObjIdDataId := fmt.Sprintf("bk_data_id_%s", bkObjectId)
 	if result, found := bkCache.Get(bkObjIdDataId); found {
-		// Result found in cache, use it
-		logrus.Debugf("using data id cache for object: %v", bkObjectId)
 		return result.(string)
 	} else {
 		bkDataId = requestDataId(bkObjectId)
-		// Setting cache for data id
 		bkCache.Set(bkObjIdDataId, bkDataId, time.Duration(cacheExpiration)*time.Second)
 	}
 
@@ -175,39 +208,41 @@ func getDataId(bkObjectId string) (bkDataId string) {
 }
 
 func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions map[string]bool, keep bool) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	for key := range *dimensions {
-		if (!objDimensions[key] && keep) || (objDimensions[key] && !keep) {
+		if (!objDimensions[strings.ToLower(key)] && keep) || (objDimensions[strings.ToLower(key)] && !keep) {
 			delete(*dimensions, key)
 		}
 	}
 }
 
-// dropMetrics 补充信息后，过滤出可用指标
-func dropMetrics(dimensions map[string]interface{}) bool {
-	if dimensions == nil {
-		return true
-	}
-
-	// 丢弃业务id和实例id为0的指标
-	if dimensions[Protocol] != CLOUD && (dimensions["bk_inst_id"] == 0 || dimensions["bk_biz_id"] == 0) {
-		return true
-	}
-
-	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
-		return true
-	}
-
-	// 过滤缺少重要信息的指标
-	switch dimensions["bk_obj_id"].(string) {
-	case K8sPodObjectId:
-		if dimensions["cluster"].(int) == 0 || dimensions["namespace_id"].(int) == 0 {
-			return true
-		}
-	case K8sNodeObjectId:
-		if dimensions["cluster"].(int) == 0 {
-			return true
+// k8s指标中dimision需要保留的维度信息
+func k8sDimisionHandler(dimensions *map[string]interface{}, k8sDimensionKeep map[string]bool) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	metricDimension := (*dimensions)["dimision"]
+	if metricDimension != nil {
+		dimensionList := strings.Split(metricDimension.(string), ",")
+		for _, s := range dimensionList {
+			_, ok := (*dimensions)[s]
+			if ok {
+				k8sDimensionKeep[s] = true
+			}
 		}
 	}
+}
 
-	return false
+func labelsIdValHandler(val interface{}) (Id int) {
+	switch v := val.(type) {
+	case int:
+		return val.(int)
+	case string:
+		if intValue, err := strconv.Atoi(v); err == nil {
+			return intValue
+		}
+	default:
+		return Id
+	}
+	return Id
 }

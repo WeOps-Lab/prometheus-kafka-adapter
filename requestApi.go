@@ -7,75 +7,41 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
 
 var weopsOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppWeopsId)
 var monitorCenterOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppMonitorCenterId)
+var bkApi = fmt.Sprintf("%s/api/c/compapi/v2/cc", bkAppPaasHost)
+
+const (
+	searchInst  = "search_inst"
+	findInstAss = "find_instance_association"
+)
 
 // getBizId 获取CMDB业务ID
 func getBkBizId(bkObjId string, bkInstId int) (bkBizId int) {
-	bkObjIdBizId := fmt.Sprintf("%s@@%s", bkObjId, bkInstId)
-	if result, found := bkCache.Get(bkObjIdBizId); found {
-		logrus.Debugf("using bkObjIdBizId cache for object: %v, inst id: %v", bkObjId, bkInstId)
-		return result.(int)
-	} else {
-		bkBizId = getId(fmt.Sprintf("%s/get_inst_biz_id/?bk_obj_id=%v&bk_inst_id=%v", weopsOpenApiUrl, bkObjId, bkInstId), bkObjId, bkInstId)
-		bkCache.Set(bkObjIdBizId, bkBizId, time.Duration(cacheExpiration)*time.Second)
-	}
-	return
-}
-
-// getK8sBkInstId 获取CMDB中k8s实例ID
-func getK8sBkInstId(bkObjId, bkInstName string) (bkInstId int) {
-	bkObjIdInstName := fmt.Sprintf("%s@@%s", bkObjId, bkInstName)
-	if result, found := bkCache.Get(bkObjIdInstName); found {
-		logrus.Debugf("using bkObjIdInstName cache for object: %v, inst name: %v", bkObjId, bkInstName)
-		return result.(int)
-	} else {
-		bkInstId = getId(fmt.Sprintf("%s/get_k8s_inst_id/?bk_obj_id=%v&bk_inst_name=%v", weopsOpenApiUrl, bkObjId, bkInstName), bkObjId, bkInstName)
-		bkCache.Set(bkObjIdInstName, bkInstId, time.Duration(cacheExpiration)*time.Second)
-	}
-	return bkInstId
-}
-
-// getWorkloadID 获取workload ID
-func getWorkloadID(instanceName string, podId int) (workloadId int) {
-	bkPodIdWkId := fmt.Sprintf("%v@@%v", instanceName, podId)
-	if result, found := bkCache.Get(bkPodIdWkId); found {
-		logrus.Debugf("using bkPodIdWkId cache for instance: %v, pod: %v", instanceName, podId)
-		return result.(int)
-	} else {
-		workloadId = getId(fmt.Sprintf("%s/get_k8s_workload_id/?pod_id=%v", weopsOpenApiUrl, podId), podId)
-		bkCache.Set(bkPodIdWkId, workloadId, time.Duration(cacheExpiration)*time.Second)
-	}
-	return workloadId
-}
-
-// getId 获取不同的ID
-func getId(url string, instanceIDs ...interface{}) (bkInstId int) {
-	httpClient := createHTTPClient()
-	body, err := sendHTTPRequest(url, httpClient, instanceIDs...)
-	if err != nil {
-		logrus.WithError(err).Errorf("response for instance error: %v", instanceIDs)
-		return 0
-	}
-
-	stringBody := strings.TrimSpace(string(body))
-	if stringBody == "" {
-		logrus.Debugf("empty value: %v, %v", instanceIDs, url)
-		return 0
-	} else {
-		bkInstId, err = strconv.Atoi(stringBody)
-		if err != nil {
-			logrus.WithError(err).Errorf("parse body to bkInstId error: %v", instanceIDs)
-			return 0
+	for _, data := range getObjSetInfo(bkObjId).Data {
+		if data.BkInstId == bkInstId {
+			setId := data.BkAsstInstId
+			return getBizFromSet(setId).Data.Info[0].BkBizId
 		}
-
 	}
+	return 0
+}
 
+// 获取实例id
+func getBkInstId(bkObjId, bkInstName string) (bkInstId int) {
+	if result, found := bkInstCache.Get(fmt.Sprintf("obj_inst_%v", bkObjId)); found {
+		for _, eachInst := range result.(instInfoResponse).Data.Info {
+			if bkInstName == eachInst.BkInstName {
+				bkInstId = eachInst.BkInstId
+			}
+		}
+	} else {
+		return 0
+	}
 	return bkInstId
 }
 
@@ -117,12 +83,6 @@ func createHTTPClient() *http.Client {
 
 // sendHTTPRequest 发送 HTTP 请求并返回响应体内容
 func sendHTTPRequest(url string, httpClient *http.Client, logParams ...interface{}) (body []byte, err error) {
-	if _, found := httpCache.Get(url); found {
-		return []byte{}, nil
-	} else {
-		httpCache.Set(url, 1, time.Duration(cacheExpiration)*time.Second)
-	}
-
 	response, err := httpClient.Get(url)
 	if err != nil {
 		logrus.WithError(err).Errorf("sendHTTPRequest http get url error: %v", logParams...)
@@ -134,6 +94,188 @@ func sendHTTPRequest(url string, httpClient *http.Client, logParams ...interface
 		body, err = io.ReadAll(response.Body)
 		if err != nil {
 			logrus.WithError(err).Errorf("sendHTTPRequest response error: %v", logParams...)
+			return nil, err
+		}
+	}
+	return body, nil
+}
+
+// 获取CMDB中所有的实例信息
+func getObjInstInfo(bkObjId string) (bkInstInfo instInfoResponse) {
+	bkObjInst := fmt.Sprintf("obj_inst_%s", bkObjId)
+	if result, found := bkInstCache.Get(bkObjInst); found {
+		return result.(instInfoResponse)
+	} else {
+		payload := strings.NewReader(fmt.Sprintf(`{
+			"bk_app_code": "%v",
+			"bk_app_secret": "%v",
+			"bk_username": "admin",
+			"bk_obj_id": "%v",
+			"fields": {
+				"bk_switch": [
+					"bk_inst_id",
+					"bk_inst_name",
+					"bk_obj_id"
+				]
+			},
+			"page": {
+				"start": 0,
+				"limit": 200,
+				"sort": "bk_inst_id"
+			}
+		}`, bkAppWeopsId, bkAppSecret, bkObjId))
+
+		instResponse, err := cmdbPostApi(bkObjId, searchInst, payload)
+		if err != nil {
+			logrus.WithError(err).Errorf("get inst info postHttpRequest error for object: %v", bkObjId)
+			return instInfoResponse{}
+		}
+
+		err = json.Unmarshal(instResponse, &bkInstInfo)
+		if err != nil {
+			logrus.WithError(err).Errorf("get inst info json Unmarshal error for object: %v", bkObjId)
+			return
+		}
+		bkInstCache.Set(bkObjInst, bkInstInfo, time.Duration(cacheExpiration)*time.Second)
+	}
+	return bkInstInfo
+}
+
+// 获取对象的全部set_id
+func getObjSetInfo(bkObjId string) (bkSetInfo bkObjSetResponse) {
+	bkObjSet := fmt.Sprintf("obj_set_%s", bkObjId)
+	if result, found := bkObjSetCache.Get(bkObjSet); found {
+		return result.(bkObjSetResponse)
+	} else {
+		payload := strings.NewReader(fmt.Sprintf(`
+		{
+			"bk_app_code": "%v",
+			"bk_app_secret": "%v",
+			"bk_username": "admin",
+			"bk_obj_id": "%v",
+			"condition": {
+				"bk_obj_asst_id": "%v_group_set"
+			}
+		}`, bkAppWeopsId, bkAppSecret, bkObjId, bkObjId))
+
+		instResponse, err := cmdbPostApi(bkObjId, findInstAss, payload)
+		if err != nil {
+			logrus.WithError(err).Errorf("get object set info for object: %v", bkObjId)
+			return
+		}
+
+		err = json.Unmarshal(instResponse, &bkSetInfo)
+		if err != nil {
+			logrus.WithError(err).Errorf("getInstInfo json Unmarshal error for object: %v", bkObjId)
+			return
+		}
+		bkObjSetCache.Set(bkObjSet, bkSetInfo, time.Duration(cacheExpiration)*time.Second)
+	}
+	return bkSetInfo
+}
+
+// 获取关联对象id
+func getRelationId(bkObjId, bkObjAssId string) (bkRelInstInfo relationGroupResponse) {
+	bkRelInst := fmt.Sprintf("obj_rela_%v_group_%v", bkObjId, bkObjAssId)
+	if result, found := bkObjRelaCache.Get(bkRelInst); found {
+		return result.(relationGroupResponse)
+	} else {
+		payload := strings.NewReader(fmt.Sprintf(`
+	{
+		"bk_app_code": "%v",
+		"bk_app_secret": "%v",
+		"bk_username": "admin",
+		"bk_obj_id": "%v",
+		"condition": {
+			"bk_obj_asst_id": "%v_group_%v",
+			"bk_asst_id": "group",
+			"bk_asst_obj_id": "%v"
+		}
+	}`, bkAppWeopsId, bkAppSecret, bkObjId, bkObjId, bkObjAssId, bkObjAssId))
+
+		instResponse, err := cmdbPostApi(bkObjId, findInstAss, payload)
+		if err != nil {
+			logrus.WithError(err).Errorf("get object set info for object: %v", bkObjId)
+			return
+		}
+
+		err = json.Unmarshal(instResponse, &bkRelInstInfo)
+		if err != nil {
+			logrus.WithError(err).Errorf("getInstInfo json Unmarshal error for object: %v", bkObjId)
+			return
+		}
+		bkObjRelaCache.Set(bkRelInst, bkRelInstInfo, time.Duration(cacheExpiration)*time.Second)
+	}
+	return bkRelInstInfo
+}
+
+func getBizFromSet(setId int) (bizInfo bizResponse) {
+	bkObjSet := fmt.Sprintf("set_id_biz_id@@%v", setId)
+	if result, found := bkSetBizCache.Get(bkObjSet); found {
+		return result.(bizResponse)
+	} else {
+		payload := strings.NewReader(fmt.Sprintf(`
+			{
+			  "bk_app_code": "%v",
+			  "bk_app_secret": "%v",
+			  "bk_username": "admin",
+			  "bk_obj_id": "set",
+			  "fields": {
+				"set": [
+				  "bk_biz_id"
+				]
+			  },
+			  "condition": {
+				"set": [
+				  {
+					"field": "bk_set_id",
+					"operator": "$eq",
+					"value": %v
+				  }
+				]
+			  }
+			}`, bkAppWeopsId, bkAppSecret, setId))
+
+		bizBodyResponse, err := cmdbPostApi("", searchInst, payload)
+		if err != nil {
+			logrus.WithError(err).Errorf("get biz id postHttpRequest error for set id: %v", setId)
+			return
+		}
+
+		err = json.Unmarshal(bizBodyResponse, &bizInfo)
+		if err != nil {
+			logrus.WithError(err).Errorf("get biz info json Unmarshal error for set id: %v", setId)
+			return
+		}
+		bkSetBizCache.Set(bkObjSet, bizInfo, time.Duration(cacheExpiration)*time.Second)
+	}
+	return bizInfo
+}
+
+func cmdbPostApi(bkObjId, apiName string, payload *strings.Reader) ([]byte, error) {
+	instAssResponse, err := postHttpRequest(fmt.Sprintf("%v/%v", bkApi, apiName), payload)
+	if err != nil {
+		logrus.WithError(err).Errorf("find instance association error for object: %v", bkObjId)
+		return nil, err
+	}
+
+	return instAssResponse, nil
+}
+
+// post请求
+func postHttpRequest(url string, payload *strings.Reader) (body []byte, err error) {
+	httpClient := createHTTPClient()
+	response, err := httpClient.Post(url, "application/json", payload)
+	if err != nil {
+		logrus.WithError(err).Errorf("post http request error %v", url)
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusOK {
+		body, err = io.ReadAll(response.Body)
+		if err != nil {
+			logrus.WithError(err).Errorf("post httpRequest response error")
 			return nil, err
 		}
 	}

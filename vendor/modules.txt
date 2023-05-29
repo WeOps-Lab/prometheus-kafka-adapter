@@ -142,6 +142,9 @@ github.com/prometheus/procfs/internal/util
 # github.com/prometheus/prometheus v0.38.0
 ## explicit; go 1.17
 github.com/prometheus/prometheus/prompb
+# github.com/robfig/cron/v3 v3.0.1
+## explicit; go 1.12
+github.com/robfig/cron/v3
 # github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus

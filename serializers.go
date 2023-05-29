@@ -61,13 +61,16 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		}
 
 		// 过滤缺少重要信息的指标
-		if dropMetrics(dimensions) {
+		if dimensions == nil {
 			weopsMetricsDropped.WithLabelValues(labels[Protocol]).Add(float64(1))
 			continue
 		}
 
-		t := fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
-		delete(dimensions, "bk_data_id")
+		var t string
+		if dimensions["bk_data_id"] != "" {
+			t = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
+			delete(dimensions, "bk_data_id")
+		}
 
 		for _, sample := range ts.Samples {
 			if !filter(metricName, labels) {
@@ -76,7 +79,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			}
 
 			// 数据清洗
-			data, err := processData(metricName, dimensions, sample)
+			data, err := formatMetricsData(metricName, dimensions, sample)
 			if err != nil {
 				serializeFailed.Add(float64(1))
 				logrus.WithError(err).Errorln("couldn't marshal timeseries")
