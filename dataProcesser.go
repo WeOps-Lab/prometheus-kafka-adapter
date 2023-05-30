@@ -88,7 +88,6 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 
 	var (
 		bkInstId   int
-		bkBizId    int
 		bkDataId   string
 		protocol   = dimensions[Protocol].(string)
 		bkObjectId = dimensions["bk_obj_id"].(string)
@@ -130,10 +129,8 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		}
 
 		if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sNameSpaceObjectId)); bizFound {
-			if bizId, bizIdFound := bizInfo.(map[int]int)[namespaceId]; bizIdFound && bizId != 0 {
+			if bizId, bizIdFound := bizInfo.(map[int]int)[namespaceId]; bizIdFound {
 				dimensions["bk_biz_id"] = bizId
-			} else {
-				return nil
 			}
 		}
 		k8sDimisionHandler(&dimensions, k8sPodDimension)
@@ -147,10 +144,8 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 
 		dimensions["node_id"] = getBkInstId(K8sNodeObjectId, dimensions["node"].(string))
 		if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sClusterObjectId)); bizFound {
-			if bizId, bizIdFound := bizInfo.(map[int]int)[dimensions["cluster"].(int)]; bizIdFound && bizId != 0 {
+			if bizId, bizIdFound := bizInfo.(map[int]int)[dimensions["cluster"].(int)]; bizIdFound {
 				dimensions["bk_biz_id"] = bizId
-			} else {
-				return nil
 			}
 		}
 		k8sDimisionHandler(&dimensions, k8sNodeDimension)
@@ -178,15 +173,13 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 
 	// 业务判断
 	if val, ok := dimensions["bk_biz_id"]; !ok {
-		bkBizId = getBkBizId(bkObjectId, bkInstId)
+		dimensions["bk_biz_id"] = getBkBizId(bkObjectId, bkInstId)
 	} else {
-		bkBizId = labelsIdValHandler(val)
+		dimensions["bk_biz_id"] = labelsIdValHandler(val)
 	}
 
-	if bkBizId != 0 {
-		dimensions["bk_biz_id"] = bkBizId
-	} else {
-		if protocol != CLOUD {
+	if dimensions["bk_biz_id"].(int) == 0 {
+		if protocol != CLOUD && protocol != Kubernetes {
 			return nil
 		}
 	}

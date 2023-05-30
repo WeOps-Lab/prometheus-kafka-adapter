@@ -82,6 +82,5 @@ func main() {
 	} else {
 		r.POST("/receive", receiveHandler(producer, serializer))
 	}
-
 	logrus.Fatal(r.Run())
 }

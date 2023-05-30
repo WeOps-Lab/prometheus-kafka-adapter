@@ -193,7 +193,7 @@ func init() {
 	//初始化获取cmdb全量信息
 	setUpCmdbInfo()
 
-	// 定时执行获取cmdb全量信息
+	//定时执行获取cmdb全量信息
 	_, err = c.AddFunc(fmt.Sprintf("@every %vs", cacheExpiration), setUpCmdbInfo)
 	if err != nil {
 		logrus.WithError(err).Fatal("set up cmdb info error")
@@ -227,7 +227,7 @@ func parseLogLevel(value string) logrus.Level {
 
 	if err != nil {
 		logrus.WithField("log-level-value", value).Warningln("invalid log level from env var, using info")
-		return logrus.InfoLevel
+		return logrus.ErrorLevel
 	}
 
 	return level

@@ -42,8 +42,8 @@ spec:
             pattern = "prometheus-kafka-adapter"
         telegraf.influxdata.com/class: opentsdb
         telegraf.influxdata.com/env-fieldref-NAMESPACE: metadata.namespace
-        telegraf.influxdata.com/limits-cpu: '3000m'
-        telegraf.influxdata.com/limits-memory: '1000Mi'
+        telegraf.influxdata.com/limits-cpu: '300m'
+        telegraf.influxdata.com/limits-memory: '100Mi'
       labels:
         app: weops-kafka-adapter
     spec:
