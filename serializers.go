@@ -45,6 +45,8 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		if _, protocolExist := labels[Protocol]; !protocolExist {
 			weopsProtocolMetricsFiltered.Add(float64(1))
 			continue
+		} else {
+			weopsProtocolMetricsInputed.WithLabelValues(labels[Protocol]).Add(float64(1))
 		}
 
 		metricName := labels["__name__"]

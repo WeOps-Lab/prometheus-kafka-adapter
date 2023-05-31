@@ -59,6 +59,13 @@ var (
 			Help: "Count of all weops filter metrics",
 		})
 
+	weopsProtocolMetricsInputed = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "weops_metrics_inputed_total",
+			Help: "Count of weops each input protocol metrics",
+		},
+		[]string{Protocol},
+	)
 	weopsMetricsFiltered = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "weops_protocol_metrics_filtered_total",
@@ -96,4 +103,5 @@ func init() {
 	prometheus.MustRegister(weopsMetricsFiltered)
 	prometheus.MustRegister(weopsMetricsDropped)
 	prometheus.MustRegister(weopsTopicSerializeTotal)
+	prometheus.MustRegister(weopsProtocolMetricsInputed)
 }
