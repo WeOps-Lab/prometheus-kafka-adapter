@@ -32,17 +32,13 @@ func getBkBizId(bkObjId string, bkInstId int) (bkBizId int) {
 }
 
 // 获取实例id
-func getBkInstId(bkObjId, bkInstName string) (bkInstId int) {
+func getBkInstId(bkObjId, bkInstName string) int {
 	if result, found := bkInstCache.Get(fmt.Sprintf("obj_inst_%v", bkObjId)); found {
-		for _, eachInst := range result.(instInfoResponse).Data.Info {
-			if bkInstName == eachInst.BkInstName {
-				bkInstId = eachInst.BkInstId
-			}
+		if instId, ok := result.(map[string]int)[bkInstName]; ok {
+			return instId
 		}
-	} else {
-		return 0
 	}
-	return bkInstId
+	return 0
 }
 
 // requestDataId 获取监控对象data id
@@ -101,12 +97,8 @@ func sendHTTPRequest(url string, httpClient *http.Client, logParams ...interface
 }
 
 // 获取CMDB中所有的实例信息
-func getObjInstInfo(bkObjId string) (bkInstInfo instInfoResponse) {
-	bkObjInst := fmt.Sprintf("obj_inst_%s", bkObjId)
-	if result, found := bkInstCache.Get(bkObjInst); found {
-		return result.(instInfoResponse)
-	} else {
-		payload := strings.NewReader(fmt.Sprintf(`{
+func getObjInstResp(start int, bkObjId string) (bkInstInfo instInfoResponse) {
+	payload := strings.NewReader(fmt.Sprintf(`{
 			"bk_app_code": "%v",
 			"bk_app_secret": "%v",
 			"bk_username": "admin",
@@ -119,26 +111,46 @@ func getObjInstInfo(bkObjId string) (bkInstInfo instInfoResponse) {
 				]
 			},
 			"page": {
-				"start": 0,
+				"start": %v,
 				"limit": 200,
 				"sort": "bk_inst_id"
 			}
-		}`, bkAppWeopsId, bkAppSecret, bkObjId))
+		}`, bkAppWeopsId, bkAppSecret, bkObjId, start))
 
-		instResponse, err := cmdbPostApi(bkObjId, searchInst, payload)
-		if err != nil {
-			logrus.WithError(err).Errorf("get inst info postHttpRequest error for object: %v", bkObjId)
-			return instInfoResponse{}
-		}
+	instResponse, err := cmdbPostApi(bkObjId, searchInst, payload)
+	if err != nil {
+		logrus.WithError(err).Errorf("get inst info postHttpRequest error for object: %v", bkObjId)
+		return instInfoResponse{}
+	}
 
-		err = json.Unmarshal(instResponse, &bkInstInfo)
-		if err != nil {
-			logrus.WithError(err).Errorf("get inst info json Unmarshal error for object: %v", bkObjId)
-			return
-		}
-		bkInstCache.Set(bkObjInst, bkInstInfo, time.Duration(cacheExpiration)*time.Second)
+	err = json.Unmarshal(instResponse, &bkInstInfo)
+	if err != nil {
+		logrus.WithError(err).Errorf("get inst info json Unmarshal error for object: %v", bkObjId)
+		return
 	}
 	return bkInstInfo
+}
+
+func getObjInstInfo(bkObjId string) {
+	bkObjInst := fmt.Sprintf("obj_inst_%s", bkObjId)
+	response := getObjInstResp(0, bkObjId)
+	instMap := make(map[string]int)
+
+	for _, inst := range response.Data.Info {
+		instMap[inst.BkInstName] = inst.BkInstId
+	}
+
+	allInstCount := response.Data.Count
+	start := len(response.Data.Info)
+	for start < allInstCount {
+		response = getObjInstResp(start, bkObjId)
+		for _, inst := range response.Data.Info {
+			instMap[inst.BkInstName] = inst.BkInstId
+		}
+		start += len(response.Data.Info)
+	}
+
+	bkInstCache.Set(bkObjInst, instMap, time.Duration(cacheExpiration)*time.Second)
 }
 
 // 获取对象的全部set_id
