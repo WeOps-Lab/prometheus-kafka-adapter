@@ -280,12 +280,12 @@ func parseK8sMetricsFile(filePath string) {
 		logrus.Errorf("Failed to parse YAML %v: %v", filePath, err)
 	}
 
-	for _, nodeMetric := range metrics.NodeMetrics {
-		K8sNodeMetrics[nodeMetric] = nodeMetric
+	for nodeKey, nodeMetric := range metrics.NodeMetrics {
+		K8sNodeMetrics[nodeKey] = nodeMetric
 	}
 
-	for _, podMetric := range metrics.PodMetrics {
-		K8sPodMetrics[podMetric] = podMetric
+	for podKey, podMetric := range metrics.PodMetrics {
+		K8sPodMetrics[podKey] = podMetric
 	}
 }
 

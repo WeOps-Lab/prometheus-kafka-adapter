@@ -104,6 +104,6 @@ type MetricsData struct {
 }
 
 type MetricsFileData struct {
-	NodeMetrics []string `yaml:"K8sNodeMetrics"`
-	PodMetrics  []string `yaml:"K8sPodMetrics"`
+	NodeMetrics map[string]string `yaml:"K8sNodeMetrics"`
+	PodMetrics  map[string]string `yaml:"K8sPodMetrics"`
 }

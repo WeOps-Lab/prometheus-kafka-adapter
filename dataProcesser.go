@@ -53,22 +53,23 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 
 // k8sMetricsPreHandler 判断k8s指标，并补充k8s类的bk_obj_id
 func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
-	metricName := labels["__name__"]
 	if _, ok := labels["node"]; !ok {
 		return false
 	}
 	if _, ok := labels["cluster"]; !ok {
 		return false
 	}
-	if _, nodeMetricsExist := K8sNodeMetrics[metricName]; nodeMetricsExist {
+	if nodeMetricName, nodeMetricsExist := K8sNodeMetrics[labels["__name__"]]; nodeMetricsExist {
+		labels["__name__"] = nodeMetricName
 		labels["bk_obj_id"] = K8sNodeObjectId
 		labels["instance_name"] = labels["node"]
 		labels["cluster_name"] = labels["cluster"]
 		return true
-	} else if _, podMetricsExist := K8sPodMetrics[metricName]; podMetricsExist {
+	} else if podMetricName, podMetricsExist := K8sPodMetrics[labels["__name__"]]; podMetricsExist {
 		if _, ok := labels["pod"]; !ok {
 			return false
 		}
+		labels["__name__"] = podMetricName
 		labels["bk_obj_id"] = K8sPodObjectId
 		labels["instance_name"] = labels["uid"]
 		labels["cluster_name"] = labels["cluster"]
