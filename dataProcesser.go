@@ -138,7 +138,6 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 				dimensions["bk_biz_id"] = bizId
 			}
 		}
-		k8sDimisionHandler(&dimensions, k8sPodDimension)
 		deleteUselessDimension(&dimensions, k8sPodDimension, true)
 	} else if bkObjectId == K8sNodeObjectId {
 		if clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster"].(string)); clusterId == 0 {
