@@ -182,12 +182,6 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		dimensions["bk_biz_id"] = labelsIdValHandler(val)
 	}
 
-	if dimensions["bk_biz_id"].(int) == 0 {
-		if protocol != CLOUD && protocol != Kubernetes {
-			return nil
-		}
-	}
-
 	deleteUselessDimension(&dimensions, commonDimensionFilter, false)
 	return
 }
