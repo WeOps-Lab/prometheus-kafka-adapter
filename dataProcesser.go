@@ -156,10 +156,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		deleteUselessDimension(&dimensions, k8sNodeDimension, true)
 	}
 
-	if protocol == SNMP {
-		dimensions["instance_name"] = dimensions["bk_inst_name"]
-		delete(dimensions, "bk_inst_name")
-	} else if protocol == IPMI {
+	if protocol == SNMP || protocol == IPMI {
 		dimensions["instance_name"] = dimensions["bk_inst_name"]
 	}
 
