@@ -27,6 +27,28 @@ const (
 	K8sWorkloadObjectId  = "k8s_workload"
 )
 
+var objList = map[string]bool{
+	K8sPodObjectId:       true,
+	K8sClusterObjectId:   true,
+	K8sNodeObjectId:      true,
+	K8sWorkloadObjectId:  true,
+	K8sNameSpaceObjectId: true,
+	"bk_switch":          true,
+	"bk_router":          true,
+	"bk_firewall":        true,
+	"bk_loadbalance":     true,
+	"hard_server":        true,
+	"vmware_ds":          true,
+	"vmware_vm":          true,
+	"vmware_esxi":        true,
+	"qcloud_cvm":         true,
+	"aliyun_ecs":         true,
+	"mo_server":          true,
+	"mo_host":            true,
+	"mo_cloud":           true,
+	"mo_ds":              true,
+}
+
 // K8sPodMetrics k8s容器指标
 var K8sPodMetrics = make(map[string]string)
 var k8sPodDimension = map[string]bool{

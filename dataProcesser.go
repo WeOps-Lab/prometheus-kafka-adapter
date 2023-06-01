@@ -93,6 +93,10 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		bkObjectId = dimensions["bk_obj_id"].(string)
 	)
 
+	if !objList[bkObjectId] {
+		objList[bkObjectId] = true
+	}
+
 	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
 		if bkDataId = getDataId(bkObjectId); bkDataId == "" {
 			return nil

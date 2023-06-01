@@ -292,7 +292,6 @@ func parseK8sMetricsFile(filePath string) {
 func setUpCmdbInfo() {
 	var wg sync.WaitGroup
 	// TODO: weops接口取对bk_obj_id、data_id
-	objList := []string{"k8s_pod", "k8s_cluster", "bk_node", "k8s_workload", "k8s_namespace", "bk_switch", "bk_firewall", "hard_server"}
 	processObject := func(obj string) {
 		defer wg.Done()
 		getObjInstInfo(obj)
@@ -305,7 +304,7 @@ func setUpCmdbInfo() {
 		}
 	}
 
-	for _, obj := range objList {
+	for obj, _ := range objList {
 		wg.Add(1)
 		go processObject(obj)
 	}
