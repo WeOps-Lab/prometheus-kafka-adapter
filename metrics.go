@@ -79,7 +79,7 @@ var (
 			Name: "weops_metrics_dropped_total",
 			Help: "Count of all weops drop metrics",
 		},
-		[]string{Protocol},
+		[]string{Protocol, "metric_name"},
 	)
 
 	weopsTopicSerializeTotal = prometheus.NewCounterVec(
