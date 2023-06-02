@@ -25,11 +25,13 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 	if dimensions[Protocol] != CLOUD {
 		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
 	} else {
-		timestamp, err = strconv.ParseInt(dimensions["metric_timestamp"].(string), 10, 64)
-		if err != nil {
-			logrus.WithError(err).Errorf("%v parse timestamp error", dimensions[Protocol])
+		if val, ok := dimensions["metric_timestamp"]; ok {
+			timestamp, err = strconv.ParseInt(val.(string), 10, 64)
+			if err != nil {
+				logrus.WithError(err).Errorf("%v parse timestamp error", dimensions[Protocol])
+			}
+			delete(dimensions, "metric_timestamp")
 		}
-		delete(dimensions, "metric_timestamp")
 	}
 
 	handleData := MetricsData{
