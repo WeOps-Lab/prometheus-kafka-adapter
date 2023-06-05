@@ -53,7 +53,6 @@ var objList = map[string]bool{
 var K8sPodMetrics = make(map[string]string)
 var k8sPodDimension = map[string]bool{
 	"bk_data_id":    true,
-	"bk_biz_id":     true,
 	"bk_inst_id":    true,
 	"bk_obj_id":     true,
 	"cluster":       true,
@@ -61,9 +60,11 @@ var k8sPodDimension = map[string]bool{
 	"namespace_id":  true,
 	"node_id":       true,
 	"pod_id":        true,
+	"pod":           true,
 	"workload":      true,
 }
 var commonDimensionFilter = map[string]bool{
+	// influx保留字段
 	"name":        true,
 	"user":        true,
 	"users":       true,
@@ -87,7 +88,6 @@ var commonDimensionFilter = map[string]bool{
 var K8sNodeMetrics = make(map[string]string)
 var k8sNodeDimension = map[string]bool{
 	"bk_data_id":    true,
-	"bk_biz_id":     true,
 	"bk_inst_id":    true,
 	"bk_obj_id":     true,
 	"cluster":       true,

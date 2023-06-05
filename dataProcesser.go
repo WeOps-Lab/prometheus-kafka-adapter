@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/sirupsen/logrus"
 	"math"
 	"strconv"
 	"strings"
@@ -22,18 +21,7 @@ func handleSpecialValue(value float64) float64 {
 // formatMetricsData 标准化输出数据
 func formatMetricsData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
 	var timestamp int64
-	if dimensions[Protocol] != CLOUD {
-		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
-	} else {
-		if val, ok := dimensions["metric_timestamp"]; ok {
-			timestamp, err = strconv.ParseInt(val.(string), 10, 64)
-			if err != nil {
-				logrus.WithError(err).Errorf("%v parse timestamp error", dimensions[Protocol])
-			}
-			delete(dimensions, "metric_timestamp")
-		}
-	}
-
+	timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
 	handleData := MetricsData{
 		Data: []struct {
 			Dimension map[string]interface{} `json:"dimension"`
@@ -174,11 +162,13 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		return nil
 	}
 
-	// 业务判断
-	if val, ok := dimensions["bk_biz_id"]; !ok {
-		dimensions["bk_biz_id"] = getBkBizId(bkObjectId, bkInstId)
-	} else {
-		dimensions["bk_biz_id"] = labelsIdValHandler(val)
+	if bkObjectId != K8sNodeObjectId && bkObjectId != K8sPodObjectId {
+		// 业务判断
+		if val, ok := dimensions["bk_biz_id"]; !ok {
+			dimensions["bk_biz_id"] = getBkBizId(bkObjectId, bkInstId)
+		} else {
+			dimensions["bk_biz_id"] = labelsIdValHandler(val)
+		}
 	}
 
 	deleteUselessDimension(&dimensions, commonDimensionFilter, false)
