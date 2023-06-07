@@ -114,6 +114,8 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 			if dimensions["workload"] = podWorkloadInfo.(map[int]int)[bkInstId]; dimensions["workload"].(int) == 0 {
 				return nil
 			}
+		} else {
+			return nil
 		}
 
 		dimensions["node_id"] = getBkInstId(K8sNodeObjectId, dimensions["node"].(string))
