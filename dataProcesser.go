@@ -12,8 +12,11 @@ import (
 
 // handleSpecialValue 处理+Inf、-Inf、NaN特殊值
 func handleSpecialValue(value float64) float64 {
-	if math.IsInf(value, 0) || math.IsNaN(value) {
+	if math.IsInf(value, -1) || math.IsNaN(value) {
 		return float64(0)
+	}
+	if math.IsInf(value, 1) {
+		return float64(-1)
 	}
 	return value
 }
