@@ -181,12 +181,16 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 }
 
 func getDataId(bkObjectId string) (bkDataId string) {
-	bkObjIdDataId := fmt.Sprintf("bk_data_id_%s", bkObjectId)
-	if result, found := bkCache.Get(bkObjIdDataId); found {
-		return result.(string)
+	if result, found := bkCache.Get("bk_data_id"); found {
+		if dataID, found := result.(map[string]string)[bkObjectId]; found {
+			return dataID
+		}
 	} else {
-		bkDataId = requestDataId(bkObjectId)
-		bkCache.Set(bkObjIdDataId, bkDataId, time.Duration(cacheExpiration)*time.Second)
+		bkObjData := requestDataId()
+		bkCache.Set("bk_data_id", bkObjData, time.Duration(cacheExpiration)*time.Second)
+		if bkDataId, found := bkObjData[bkObjectId]; found {
+			return bkDataId
+		}
 	}
 
 	return bkDataId

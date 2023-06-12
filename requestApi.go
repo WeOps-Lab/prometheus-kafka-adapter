@@ -6,13 +6,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
-	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
 var weopsOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppWeopsId)
-var monitorCenterOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppMonitorCenterId)
 var bkApi = fmt.Sprintf("%s/api/c/compapi/v2/cc", bkAppPaasHost)
 
 const (
@@ -42,30 +41,23 @@ func getBkInstId(bkObjId, bkInstName string) int {
 }
 
 // requestDataId 获取监控对象data id
-func requestDataId(bkObjectId string) (bkDataId string) {
-	url := fmt.Sprintf("%s/get_obj_table_id/?bk_obj_id=%v", monitorCenterOpenApiUrl, bkObjectId)
+func requestDataId() map[string]string {
 	httpClient := createHTTPClient()
-
-	body, err := sendHTTPRequest(url, httpClient, bkObjectId)
+	body, err := sendHTTPRequest(fmt.Sprintf("%s/get_all_data_id", weopsOpenApiUrl), httpClient)
 	if err != nil {
-		logrus.WithError(err).Errorf("response for data id error: %v", bkObjectId)
+		logrus.WithError(err).Errorf("response for get_all_data_id error")
 	}
 
-	var result struct {
-		Result bool   `json:"result"`
-		Data   string `json:"data"`
-	}
-
+	var result AllObjDataIdResponse
+	bkObjDataId := make(map[string]string, 0)
 	err = json.Unmarshal(body, &result)
 	if err == nil && result.Result {
-		re := regexp.MustCompile(`\d+`)
-		matches := re.FindAllString(result.Data, -1)
-		if len(matches) > 0 {
-			bkDataId = matches[len(matches)-1]
+		for _, info := range result.Data {
+			bkObjDataId[info.BkObjId] = strconv.Itoa(info.BkDataId)
 		}
 	}
 
-	return bkDataId
+	return bkObjDataId
 }
 
 // createHTTPClient 创建一个不带代理的 HTTP Client

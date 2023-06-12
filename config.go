@@ -35,7 +35,6 @@ import (
 var (
 	bkAppWeopsId           = "weops_saas"
 	bkAppSecret            = ""
-	bkAppMonitorCenterId   = "monitorcenter_saas"
 	bkAppPaasHost          = "http://paas.weops.com"
 	kafkaBrokerList        = "kafka:9092"
 	kafkaTopic             = "metrics"
@@ -81,10 +80,6 @@ func init() {
 
 	if value := os.Getenv("BKAPP_WEOPS_APP_ID"); value != "" {
 		bkAppWeopsId = value
-	}
-
-	if value := os.Getenv("BKAPP_MONITORCENTER_APP_ID"); value != "" {
-		bkAppMonitorCenterId = value
 	}
 
 	if value := os.Getenv("BKAPP_WEOPS_APP_SECRET"); value != "" {
@@ -291,18 +286,18 @@ func parseK8sMetricsFile(filePath string) {
 
 func setUpCmdbInfo() {
 	var wg sync.WaitGroup
-	// TODO: weops接口取对bk_obj_id、data_id
 	processObject := func(obj string) {
 		defer wg.Done()
 		getObjInstInfo(obj)
 		getObjSetInfo(obj)
-		getDataId(obj)
 		if result, found := bkObjSetCache.Get(fmt.Sprintf("obj_set_%s", obj)); found {
 			for _, data := range result.(bkObjSetResponse).Data {
 				getBizFromSet(data.BkAsstInstId)
 			}
 		}
 	}
+
+	bkCache.Set("bk_data_id", requestDataId(), time.Duration(cacheExpiration)*time.Second)
 
 	for obj, _ := range objList {
 		wg.Add(1)

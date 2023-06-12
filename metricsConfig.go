@@ -38,15 +38,6 @@ var objList = map[string]bool{
 	"bk_firewall":        true,
 	"bk_loadbalance":     true,
 	"hard_server":        true,
-	"vmware_ds":          true,
-	"vmware_vm":          true,
-	"vmware_esxi":        true,
-	"qcloud_cvm":         true,
-	"aliyun_ecs":         true,
-	"mo_server":          true,
-	"mo_host":            true,
-	"mo_cloud":           true,
-	"mo_ds":              true,
 }
 
 // K8sPodMetrics k8s容器指标

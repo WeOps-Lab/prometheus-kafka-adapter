@@ -81,3 +81,11 @@ type relationGroupResponse struct {
 	Permission interface{} `json:"permission"`
 	RequestId  string      `json:"request_id"`
 }
+
+type AllObjDataIdResponse struct {
+	Result bool `json:"result"`
+	Data   []struct {
+		BkObjId  string `json:"bk_obj_id"`
+		BkDataId int    `json:"bk_data_id"`
+	} `json:"data"`
+}
