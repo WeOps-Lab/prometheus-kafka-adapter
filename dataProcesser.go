@@ -200,7 +200,12 @@ func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions ma
 	mutex.Lock()
 	defer mutex.Unlock()
 	for key := range *dimensions {
-		if (!objDimensions[strings.ToLower(key)] && keep) || (objDimensions[strings.ToLower(key)] && !keep) {
+		if !objDimensions[strings.ToLower(key)] && keep {
+			delete(*dimensions, key)
+		} else if objDimensions[strings.ToLower(key)] && !keep {
+			if key != "__name__" {
+				(*dimensions)[fmt.Sprintf("__%v__", key)] = (*dimensions)[key]
+			}
 			delete(*dimensions, key)
 		}
 	}
