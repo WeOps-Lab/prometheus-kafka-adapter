@@ -49,6 +49,8 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			weopsProtocolMetricsInputed.WithLabelValues(labels[Protocol]).Add(float64(1))
 		}
 
+		metricName := labels["__name__"]
+
 		// 提取维度信息
 		dimensions := make(map[string]interface{})
 
@@ -59,7 +61,6 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			weopsMetricsFiltered.WithLabelValues(labels[Protocol]).Add(float64(1))
 			continue
 		}
-		metricName := labels["__name__"]
 
 		// 过滤缺少重要信息的指标
 		if dimensions == nil {
@@ -70,7 +71,11 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		var t string
 		if dimensions["bk_data_id"] != "" {
 			t = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
-			delete(dimensions, "bk_data_id")
+			for _, key := range []string{"bk_data_id", "job"} {
+				delete(dimensions, key)
+			}
+		} else {
+			continue
 		}
 
 		for _, sample := range ts.Samples {

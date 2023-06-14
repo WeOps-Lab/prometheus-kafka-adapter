@@ -82,7 +82,6 @@ var commonDimensionFilter = map[string]bool{
 	"shard":       true,
 	"tag":         true,
 	"__name__":    true,
-	"job":         true,
 }
 
 // K8sNodeMetrics k8s节点指标
