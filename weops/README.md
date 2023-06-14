@@ -1,4 +1,4 @@
-# Weops-adapter
+# Weops-kafka-adapter
 prometheus向adapter写入监控指标，adapter将指标清洗，送入蓝鲸监控链路(kafka)
 
 ## 配置
@@ -38,9 +38,8 @@ Weops环境变量配置:
 
 ### prometheus配置
 
-Prometheus needs to have a `remote_write` url configured, pointing to the '/receive' endpoint of the host and port where the prometheus-kafka-adapter service is running. For example:
-
+Prometheus 需要配置一个 `remote_write` URL，指向运行 weops-adapter 服务的主机和端口的 /receive 端点。例如：
 ```yaml
 remote_write:
-  - url: "http://prometheus-kafka-adapter:8080/receive"
+  - url: "http://weops-adapter:8080/receive"
 ```
