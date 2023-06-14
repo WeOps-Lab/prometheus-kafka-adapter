@@ -49,8 +49,6 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			weopsProtocolMetricsInputed.WithLabelValues(labels[Protocol]).Add(float64(1))
 		}
 
-		metricName := labels["__name__"]
-
 		// 提取维度信息
 		dimensions := make(map[string]interface{})
 
@@ -61,6 +59,8 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			weopsMetricsFiltered.WithLabelValues(labels[Protocol]).Add(float64(1))
 			continue
 		}
+
+		metricName := labels["__name__"]
 
 		// 过滤缺少重要信息的指标
 		if dimensions == nil {

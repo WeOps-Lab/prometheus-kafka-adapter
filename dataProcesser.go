@@ -46,13 +46,10 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 
 // k8sMetricsPreHandler 判断k8s指标，并补充k8s类的bk_obj_id
 func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
-	if _, ok := labels["node"]; !ok {
-		return false
-	}
-	if _, ok := labels["cluster"]; !ok {
-		return false
-	}
 	if nodeMetricName, nodeMetricsExist := K8sNodeMetrics[labels["__name__"]]; nodeMetricsExist {
+		if _, ok := labels["node"]; !ok {
+			return false
+		}
 		labels["__name__"] = nodeMetricName
 		labels["bk_obj_id"] = K8sNodeObjectId
 		labels["instance_name"] = labels["node"]
@@ -121,7 +118,10 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 			return nil
 		}
 
-		dimensions["node_id"] = getBkInstId(K8sNodeObjectId, dimensions["node"].(string))
+		if node, ok := dimensions["node"].(string); ok {
+			dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node)
+		}
+
 		dimensions["namespace_id"] = getBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
 		namespaceId, ok := dimensions["namespace_id"].(int)
 		if !ok || namespaceId == 0 {
@@ -142,7 +142,10 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 			dimensions["cluster"] = clusterId
 		}
 
-		dimensions["node_id"] = getBkInstId(K8sNodeObjectId, dimensions["node"].(string))
+		if node, ok := dimensions["node"].(string); ok {
+			dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node)
+		}
+
 		if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sClusterObjectId)); bizFound {
 			if bizId, bizIdFound := bizInfo.(map[int]int)[dimensions["cluster"].(int)]; bizIdFound {
 				dimensions["bk_biz_id"] = bizId
