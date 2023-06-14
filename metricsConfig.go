@@ -43,6 +43,7 @@ var objList = map[string]bool{
 // K8sPodMetrics k8s容器指标
 var K8sPodMetrics = make(map[string]string)
 var k8sPodDimension = map[string]bool{
+	Protocol:        true,
 	"bk_data_id":    true,
 	"bk_inst_id":    true,
 	"bk_obj_id":     true,
@@ -54,6 +55,15 @@ var k8sPodDimension = map[string]bool{
 	"pod":           true,
 	"workload":      true,
 }
+
+var K8sPodStatusPhaseMap = map[string]float64{
+	"Failed":    float64(0),
+	"Running":   float64(1),
+	"Pending":   float64(2),
+	"Succeeded": float64(3),
+	"Unknown":   float64(4),
+}
+
 var commonDimensionFilter = map[string]bool{
 	// influx保留字段
 	"name":        true,
@@ -78,12 +88,19 @@ var commonDimensionFilter = map[string]bool{
 // K8sNodeMetrics k8s节点指标
 var K8sNodeMetrics = make(map[string]string)
 var k8sNodeDimension = map[string]bool{
+	Protocol:        true,
 	"bk_data_id":    true,
 	"bk_inst_id":    true,
 	"bk_obj_id":     true,
 	"cluster":       true,
 	"instance_name": true,
 	"node_id":       true,
+}
+
+var K8sNodeStatusConditionMap = map[string]float64{
+	"false":   float64(0),
+	"true":    float64(1),
+	"unknown": float64(2),
 }
 
 type MetricsData struct {

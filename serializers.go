@@ -70,9 +70,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		var t string
 		if dimensions["bk_data_id"] != "" {
 			t = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
-			for _, key := range []string{"bk_data_id", Protocol} {
-				delete(dimensions, key)
-			}
+			delete(dimensions, "bk_data_id")
 		}
 
 		for _, sample := range ts.Samples {
@@ -80,6 +78,12 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 				objectsFiltered.Add(float64(1))
 				continue
 			}
+
+			// k8s动态维度处理
+			if dimensions[Protocol] == Kubernetes {
+				handleDynDim(metricName, &dimensions, sample)
+			}
+			delete(dimensions, Protocol)
 
 			// 数据清洗
 			data, err := formatMetricsData(metricName, dimensions, sample)
