@@ -61,11 +61,10 @@ var (
 	bkObjSetCache          *cache.Cache
 	cacheExpiration        = int64(300)
 	mutex                  = sync.Mutex{}
-
-	metricsFilePath = "metrics.yaml"
-	podWorkloadMap  = make(map[int]int)
-	setIdBizIdMap   = make(map[int]int)
-	c               = cron.New()
+	metricsFilePath        = "metrics.yaml"
+	podWorkloadMap         = make(map[int]int)
+	setIdBizIdMap          = make(map[int]int)
+	c                      = cron.New()
 )
 
 func init() {
