@@ -119,7 +119,9 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		}
 
 		if node, ok := dimensions["node"].(string); ok {
-			dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node)
+			if dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node); dimensions["node_id"].(int) == 0 {
+				return nil
+			}
 		}
 
 		dimensions["namespace_id"] = getBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
