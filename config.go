@@ -307,9 +307,8 @@ func setUpCmdbInfo() {
 	// pod-workload关联
 	podWorkloadRel := getRelationId(K8sPodObjectId, K8sWorkloadObjectId)
 	for _, eachRel := range podWorkloadRel.Data {
-		podWorkloadMap[eachRel.BkInstId] = eachRel.BkAsstInstId
+		bkObjRelaCache.Set(fmt.Sprintf("pod_workload_rel_map@@%v", eachRel.BkInstId), eachRel.BkAsstInstId, time.Duration(cacheExpiration)*time.Second)
 	}
-	bkObjRelaCache.Set("pod_workload_rel_map", podWorkloadMap, time.Duration(cacheExpiration)*time.Second)
 
 	// pod、node的biz_id
 	k8sBizObjList := []string{K8sNameSpaceObjectId, K8sClusterObjectId}

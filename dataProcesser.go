@@ -109,11 +109,8 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 			dimensions["cluster"] = clusterId
 		}
 
-		podWorkloadInfo, found := bkObjRelaCache.Get("pod_workload_rel_map")
-		if found {
-			if dimensions["workload"] = podWorkloadInfo.(map[int]int)[bkInstId]; dimensions["workload"].(int) == 0 {
-				return nil
-			}
+		if podWorkloadInfo, found := bkObjRelaCache.Get(fmt.Sprintf("pod_workload_rel_map@@%v", bkInstId)); found && podWorkloadInfo.(int) != 0 {
+			dimensions["workload"] = podWorkloadInfo.(int)
 		} else {
 			return nil
 		}
