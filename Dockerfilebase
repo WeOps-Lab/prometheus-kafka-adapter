@@ -1,4 +1,4 @@
-FROM weops-kafka-adapter:base as build
+FROM docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:base as build
 WORKDIR /src/prometheus-kafka-adapter
 
 COPY go.mod go.sum vendor *.go ./
