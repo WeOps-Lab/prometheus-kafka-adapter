@@ -109,11 +109,8 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 			dimensions["cluster"] = clusterId
 		}
 
-		podWorkloadInfo, found := bkObjRelaCache.Get("pod_workload_rel_map")
-		if found {
-			if dimensions["workload"] = podWorkloadInfo.(map[int]int)[bkInstId]; dimensions["workload"].(int) == 0 {
-				return nil
-			}
+		if podWorkloadInfo, found := bkObjRelaCache.Get(fmt.Sprintf("pod_workload_rel_map@@%v", bkInstId)); found && podWorkloadInfo.(int) != 0 {
+			dimensions["workload"] = podWorkloadInfo.(int)
 		} else {
 			return nil
 		}
@@ -187,15 +184,16 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 }
 
 func getDataId(bkObjectId string) (bkDataId string) {
-	if result, found := bkCache.Get("bk_data_id"); found {
-		if dataID, found := result.(map[string]string)[bkObjectId]; found {
-			return dataID
-		}
+	key := fmt.Sprintf("bk_data_id@%v", bkObjectId)
+	if result, found := bkCache.Get(key); found {
+		return result.(string)
 	} else {
 		bkObjData := requestDataId()
-		bkCache.Set("bk_data_id", bkObjData, time.Duration(cacheExpiration)*time.Second)
-		if bkDataId, found := bkObjData[bkObjectId]; found {
-			return bkDataId
+		for objId, dataId := range bkObjData {
+			bkCache.Set(fmt.Sprintf("bk_data_id@%v", objId), dataId, time.Duration(cacheExpiration)*time.Second)
+			if objId == bkObjectId {
+				bkDataId = dataId
+			}
 		}
 	}
 

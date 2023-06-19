@@ -62,7 +62,6 @@ var (
 	cacheExpiration        = int64(300)
 	mutex                  = sync.Mutex{}
 	metricsFilePath        = "metrics.yaml"
-	podWorkloadMap         = make(map[int]int)
 	setIdBizIdMap          = make(map[int]int)
 	c                      = cron.New()
 )
@@ -296,7 +295,10 @@ func setUpCmdbInfo() {
 		}
 	}
 
-	bkCache.Set("bk_data_id", requestDataId(), time.Duration(cacheExpiration)*time.Second)
+	bkObjData := requestDataId()
+	for objId, dataId := range bkObjData {
+		bkCache.Set(fmt.Sprintf("bk_data_id@%v", objId), dataId, time.Duration(cacheExpiration)*time.Second)
+	}
 
 	for obj, _ := range objList {
 		wg.Add(1)
@@ -307,9 +309,8 @@ func setUpCmdbInfo() {
 	// pod-workload关联
 	podWorkloadRel := getRelationId(K8sPodObjectId, K8sWorkloadObjectId)
 	for _, eachRel := range podWorkloadRel.Data {
-		podWorkloadMap[eachRel.BkInstId] = eachRel.BkAsstInstId
+		bkObjRelaCache.Set(fmt.Sprintf("pod_workload_rel_map@@%v", eachRel.BkInstId), eachRel.BkAsstInstId, time.Duration(cacheExpiration)*time.Second)
 	}
-	bkObjRelaCache.Set("pod_workload_rel_map", podWorkloadMap, time.Duration(cacheExpiration)*time.Second)
 
 	// pod、node的biz_id
 	k8sBizObjList := []string{K8sNameSpaceObjectId, K8sClusterObjectId}
