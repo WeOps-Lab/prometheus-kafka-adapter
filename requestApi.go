@@ -24,7 +24,10 @@ func getBkBizId(bkObjId string, bkInstId int) (bkBizId int) {
 	for _, data := range getObjSetInfo(bkObjId).Data {
 		if data.BkInstId == bkInstId {
 			setId := data.BkAsstInstId
-			return getBizFromSet(setId).Data.Info[0].BkBizId
+			bizInfo := getBizFromSet(setId).Data.Info
+			if len(bizInfo) > 0 {
+				return getBizFromSet(setId).Data.Info[0].BkBizId
+			}
 		}
 	}
 	return 0

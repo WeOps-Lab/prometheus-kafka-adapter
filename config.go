@@ -323,11 +323,13 @@ func setUpCmdbInfo() {
 				SetInfo := res.(bkObjSetResponse)
 				for _, eachSet := range SetInfo.Data {
 					if bizRes, bizFound := bkSetBizCache.Get(fmt.Sprintf("set_id_biz_id@@%v", eachSet.BkAsstInstId)); bizFound {
-						BizId := bizRes.(bizResponse).Data.Info[0].BkBizId
-						setId := eachSet.BkInstId
-						mutex.Lock()
-						setIdBizIdMap[setId] = BizId
-						mutex.Unlock()
+						if len(bizRes.(bizResponse).Data.Info) > 0 {
+							BizId := bizRes.(bizResponse).Data.Info[0].BkBizId
+							setId := eachSet.BkInstId
+							mutex.Lock()
+							setIdBizIdMap[setId] = BizId
+							mutex.Unlock()
+						}
 					}
 				}
 			}
