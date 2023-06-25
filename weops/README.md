@@ -43,3 +43,17 @@ Prometheus 需要配置一个 `remote_write` URL，指向运行 weops-adapter �
 remote_write:
   - url: "http://weops-adapter:8080/receive"
 ```
+
+### 运行示例
+```shell
+docker run -d --restart=always --net=host \
+-e KAFKA_BROKER_LIST=$BK_KAFKA_IP:9092 \
+-e BASIC_AUTH_USERNAME=admin \
+-e BASIC_AUTH_PASSWORD=admin \
+-e PORT=8080 \
+-e BKAPP_PAAS_HOST=http://paas.weops.com \
+-e BKAPP_WEOPS_APP_ID=weops_saas \
+-e BKAPP_WEOPS_APP_SECRET=6a38236d-8e79-4c48-a977-504b0d286904 \
+--name=weops-kafka-adapter \
+docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
+```
