@@ -35,7 +35,7 @@ import (
 var (
 	bkAppWeopsId           = "weops_saas"
 	bkAppSecret            = ""
-	bkAppPaasHost          = "http://paas.weops.com"
+	bkAppPaasHost          = "http://paas.service.consul"
 	kafkaBrokerList        = "kafka:9092"
 	kafkaTopic             = "metrics"
 	topicTemplate          *template.Template
