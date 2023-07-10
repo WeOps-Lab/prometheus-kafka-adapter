@@ -11,9 +11,6 @@ import (
 	"time"
 )
 
-var weopsOpenApiUrl = fmt.Sprintf("%s/o/%s/open_api", bkAppPaasHost, bkAppWeopsId)
-var bkApi = fmt.Sprintf("%s/api/c/compapi/v2/cc", bkAppPaasHost)
-
 const (
 	searchInst  = "search_inst"
 	findInstAss = "find_instance_association"
@@ -46,7 +43,7 @@ func getBkInstId(bkObjId, bkInstName string) int {
 // requestDataId 获取监控对象data id
 func requestDataId() map[string]string {
 	httpClient := createHTTPClient()
-	body, err := sendHTTPRequest(fmt.Sprintf("%s/get_all_data_id", weopsOpenApiUrl), httpClient)
+	body, err := sendHTTPRequest(fmt.Sprintf("%s/o/%s/open_api/get_all_data_id", bkAppPaasHost, bkAppWeopsId), httpClient)
 	if err != nil {
 		logrus.WithError(err).Errorf("response for get_all_data_id error")
 	}
@@ -260,7 +257,7 @@ func getBizFromSet(setId int) (bizInfo bizResponse) {
 }
 
 func cmdbPostApi(bkObjId, apiName string, payload *strings.Reader) ([]byte, error) {
-	instAssResponse, err := postHttpRequest(fmt.Sprintf("%v/%v", bkApi, apiName), payload)
+	instAssResponse, err := postHttpRequest(fmt.Sprintf("%s/api/c/compapi/v2/cc/%v", bkAppPaasHost, apiName), payload)
 	if err != nil {
 		logrus.WithError(err).Errorf("find instance association error for object: %v", bkObjId)
 		return nil, err
