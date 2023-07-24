@@ -16,6 +16,8 @@ package main
 
 const (
 	Protocol             = "protocol"
+	Source               = "source"
+	Automate             = "automate"
 	Kubernetes           = "kubernetes"
 	SNMP                 = "snmp"
 	IPMI                 = "ipmi"

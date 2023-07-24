@@ -53,7 +53,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		dimensions := make(map[string]interface{})
 
 		// 过滤指标
-		if (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI || labels[Protocol] == CLOUD {
+		if (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI || labels[Source] == Automate {
 			dimensions = fillUpBkInfo(labels)
 		} else {
 			weopsMetricsFiltered.WithLabelValues(labels[Protocol]).Add(float64(1))

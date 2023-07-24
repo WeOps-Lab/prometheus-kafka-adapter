@@ -80,9 +80,19 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	var (
 		bkInstId   int
 		bkDataId   string
-		protocol   = dimensions[Protocol].(string)
-		bkObjectId = dimensions["bk_obj_id"].(string)
+		protocol   string
+		bkObjectId string
 	)
+
+	bkObjectId, ok := dimensions["bk_obj_id"].(string)
+	if !ok || bkObjectId == "" {
+		return nil
+	}
+
+	protocol, ok = dimensions[Protocol].(string)
+	if !ok || protocol == "" {
+		return nil
+	}
 
 	if !objList[bkObjectId] {
 		objList[bkObjectId] = true
