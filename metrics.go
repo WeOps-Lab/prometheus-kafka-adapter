@@ -89,6 +89,19 @@ var (
 		},
 		[]string{"bk_object_id", "topic"},
 	)
+	weopsGetDataIdFailTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "weops_get_data_id_fail",
+			Help: "Count of fail request weops api for data id",
+		})
+
+	getCMDBInfoFailTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "cmdb_get_info_fail",
+			Help: "Count of fail request cmdb api",
+		},
+		[]string{"bk_obj_id", "api_type"},
+	)
 )
 
 func init() {
@@ -104,4 +117,6 @@ func init() {
 	prometheus.MustRegister(weopsMetricsDropped)
 	prometheus.MustRegister(weopsTopicSerializeTotal)
 	prometheus.MustRegister(weopsProtocolMetricsInputed)
+	prometheus.MustRegister(weopsGetDataIdFailTotal)
+	prometheus.MustRegister(getCMDBInfoFailTotal)
 }

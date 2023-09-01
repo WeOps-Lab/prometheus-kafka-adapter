@@ -46,6 +46,7 @@ func requestDataId() map[string]string {
 	if fail, found := bkCache.Get("http_get_data_id_fail"); found {
 		if fail.(int) > 10 {
 			logrus.Errorf("http get data id fail more than 10 times, do not send http request")
+			weopsGetDataIdFailTotal.Add(float64(1))
 			return nil
 		}
 	}
@@ -56,6 +57,7 @@ func requestDataId() map[string]string {
 		logrus.WithError(err).Errorf("response for get_all_data_id error")
 		if failTime, found := bkCache.Get("http_get_data_id_fail"); found {
 			bkCache.Set("http_get_data_id_fail", failTime.(int)+1, time.Duration(apiFailExpiration)*time.Second)
+			weopsGetDataIdFailTotal.Add(float64(1))
 		} else {
 			bkCache.Set("http_get_data_id_fail", 0, time.Duration(apiFailExpiration)*time.Second)
 		}
@@ -275,6 +277,7 @@ func cmdbPostApi(bkObjId, apiName string, payload *strings.Reader) ([]byte, erro
 	if fail, found := bkCache.Get("http_post_fail"); found {
 		if fail.(int) > 10 {
 			logrus.Errorf("get info from CMDB fail more than 10 times, do not send http post")
+			getCMDBInfoFailTotal.WithLabelValues(bkObjId, apiName).Add(float64(1))
 			return nil, nil
 		}
 	}
@@ -284,6 +287,7 @@ func cmdbPostApi(bkObjId, apiName string, payload *strings.Reader) ([]byte, erro
 		logrus.WithError(err).Errorf("find instance association error for object: %v", bkObjId)
 		if failTime, found := bkCache.Get("http_post_fail"); found {
 			bkCache.Set("http_post_fail", failTime.(int)+1, time.Duration(apiFailExpiration)*time.Second)
+			getCMDBInfoFailTotal.WithLabelValues(bkObjId, apiName).Add(float64(1))
 		} else {
 			bkCache.Set("http_post_fail", 0, time.Duration(apiFailExpiration)*time.Second)
 		}
