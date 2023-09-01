@@ -42,10 +42,24 @@ func getBkInstId(bkObjId, bkInstName string) int {
 
 // requestDataId 获取监控对象data id
 func requestDataId() map[string]string {
+	// get fail time from cache, if fail time > 10, do not sendHTTPRequest
+	if fail, found := bkCache.Get("http_get_data_id_fail"); found {
+		if fail.(int) > 10 {
+			logrus.Errorf("http get data id fail more than 10 times, do not send http request")
+			return nil
+		}
+	}
+
 	httpClient := createHTTPClient()
 	body, err := sendHTTPRequest(fmt.Sprintf("%s/o/%s/open_api/get_all_data_id", bkAppPaasHost, bkAppWeopsId), httpClient)
 	if err != nil {
 		logrus.WithError(err).Errorf("response for get_all_data_id error")
+		if failTime, found := bkCache.Get("http_get_data_id_fail"); found {
+			bkCache.Set("http_get_data_id_fail", failTime.(int)+1, time.Duration(apiFailExpiration)*time.Second)
+		} else {
+			bkCache.Set("http_get_data_id_fail", 0, time.Duration(apiFailExpiration)*time.Second)
+		}
+		return nil
 	}
 
 	var result AllObjDataIdResponse
@@ -257,9 +271,22 @@ func getBizFromSet(setId int) (bizInfo bizResponse) {
 }
 
 func cmdbPostApi(bkObjId, apiName string, payload *strings.Reader) ([]byte, error) {
+	// get fail time from cache, if fail time > 10, do not postHttpRequest
+	if fail, found := bkCache.Get("http_post_fail"); found {
+		if fail.(int) > 10 {
+			logrus.Errorf("get info from CMDB fail more than 10 times, do not send http post")
+			return nil, nil
+		}
+	}
+
 	instAssResponse, err := postHttpRequest(fmt.Sprintf("%s/api/c/compapi/v2/cc/%v", bkAppPaasHost, apiName), payload)
 	if err != nil {
 		logrus.WithError(err).Errorf("find instance association error for object: %v", bkObjId)
+		if failTime, found := bkCache.Get("http_post_fail"); found {
+			bkCache.Set("http_post_fail", failTime.(int)+1, time.Duration(apiFailExpiration)*time.Second)
+		} else {
+			bkCache.Set("http_post_fail", 0, time.Duration(apiFailExpiration)*time.Second)
+		}
 		return nil, err
 	}
 

@@ -60,6 +60,7 @@ var (
 	bkSetBizCache          *cache.Cache
 	bkObjSetCache          *cache.Cache
 	cacheExpiration        = int64(300)
+	apiFailExpiration      = int64(10)
 	mutex                  = sync.Mutex{}
 	metricsFilePath        = "metrics.yaml"
 	setIdBizIdMap          = make(map[int]int)
@@ -176,9 +177,17 @@ func init() {
 	if value := os.Getenv("CACHE_EXPIRATION"); value != "" {
 		intValue, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			logrus.WithError(err).Fatalln("parse cache expiration error")
+			logrus.WithError(err).Fatalln("parse CACHE_EXPIRATION cache expiration error")
 		}
 		cacheExpiration = intValue
+	}
+
+	if value := os.Getenv("API_FAIL_EXPIRATION"); value != "" {
+		intValue, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			logrus.WithError(err).Fatalln("parse API_FAIL_EXPIRATION cache expiration error")
+		}
+		apiFailExpiration = intValue
 	}
 
 	parseK8sMetricsFile(metricsFilePath)
