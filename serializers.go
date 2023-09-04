@@ -43,6 +43,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 
 		// 必须带有protocol字段才会当做处理指标
 		if _, protocolExist := labels[Protocol]; !protocolExist {
+			logrus.WithField("Metrics excluding the protocol dimension: ", labels).Debugln()
 			weopsProtocolMetricsFiltered.Add(float64(1))
 			continue
 		} else {
@@ -56,6 +57,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		if (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI || labels[Source] == Automate {
 			dimensions = fillUpBkInfo(labels)
 		} else {
+			logrus.WithField("The metrics do not meet the WEOPS conditions: ", labels).Debugln()
 			weopsMetricsFiltered.WithLabelValues(labels[Protocol]).Add(float64(1))
 			continue
 		}
@@ -64,6 +66,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 
 		// 过滤缺少重要信息的指标
 		if dimensions == nil {
+			logrus.WithField("Dropping metrics because of null dimension: ", labels).Debugln()
 			weopsMetricsDropped.WithLabelValues(labels[Protocol], metricName).Add(float64(1))
 			continue
 		}
