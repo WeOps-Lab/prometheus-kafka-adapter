@@ -15,6 +15,7 @@ prometheus向adapter写入监控指标，adapter将指标清洗，送入蓝鲸�
 - `BASIC_AUTH_PASSWORD`：用于接收端点的基本身份验证密码，默认为无基本身份验证。
 - `LOG_LEVEL`：为 [`logrus`](https://github.com/sirupsen/logrus) 定义日志级别，可以是 `debug`、`info`、`warn`、`error`、`fatal` 或 `panic`，默认为 `info`。
 - `GIN_MODE`：管理 [gin](https://github.com/gin-gonic/gin) 调试日志记录，可以是 `debug` 或 `release`。
+- `LOG_SKIP_RECEIVE`: 填`True`则不现实/receive请求部分的日志。
 
 Weops环境变量配置:
 - `BKAPP_PAAS_HOST`: 蓝鲸Paas访问地址，默认为 `http://paas.weops.com`。
@@ -57,3 +58,21 @@ docker run -d --restart=always --net=host \
 --name=weops-kafka-adapter \
 docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 ```
+
+### 版本日志
+
+#### v1.0.0
+- 初始化
+
+#### v1.0.1
+- 修复api请求地址变量问题
+
+#### v1.0.2
+- 加速构建镜像
+
+#### v1.0.3
+- 适配automate更多类型的自定义上报
+
+#### v1.0.4
+- 修复weops部署后才可部署adapter的问题
+- 优化日志
