@@ -15,10 +15,7 @@
 package main
 
 import (
-	"time"
-
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/gin-gonic/contrib/ginrus"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -70,7 +67,15 @@ func main() {
 
 	r := gin.New()
 
-	r.Use(ginrus.Ginrus(logrus.StandardLogger(), time.RFC3339, true), gin.Recovery())
+	r.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		Formatter: LoggerWithFormatter,
+		SkipPaths: func() []string {
+			if logSkipReceive {
+				return []string{"/receive"}
+			}
+			return []string{}
+		}(),
+	}))
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	r.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "UP"}) })

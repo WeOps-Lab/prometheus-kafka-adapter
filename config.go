@@ -61,6 +61,7 @@ var (
 	bkObjSetCache          *cache.Cache
 	cacheExpiration        = int64(300)
 	apiFailExpiration      = int64(10)
+	logSkipReceive         = false
 	mutex                  = sync.Mutex{}
 	metricsFilePath        = "metrics.yaml"
 	setIdBizIdMap          = make(map[int]int)
@@ -188,6 +189,11 @@ func init() {
 			logrus.WithError(err).Fatalln("parse API_FAIL_EXPIRATION cache expiration error")
 		}
 		apiFailExpiration = intValue
+	}
+
+	// 缓存时长
+	if value := os.Getenv("LOG_SKIP_RECEIVE"); value == "True" {
+		logSkipReceive = true
 	}
 
 	parseK8sMetricsFile(metricsFilePath)
