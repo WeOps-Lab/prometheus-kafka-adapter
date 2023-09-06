@@ -76,3 +76,7 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 #### v1.0.4
 - 修复weops部署后才可部署adapter的问题
 - 优化日志
+
+
+#### v1.0.5
+- 优化日志，k8s部分排查
