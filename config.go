@@ -312,6 +312,7 @@ func setUpCmdbInfo() {
 
 	bkObjData := requestDataId()
 	for objId, dataId := range bkObjData {
+		logrus.Debugf("obj_id: %s, data_id: %s", objId, dataId)
 		bkCache.Set(fmt.Sprintf("bk_data_id@%v", objId), dataId, time.Duration(cacheExpiration)*time.Second)
 	}
 

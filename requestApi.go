@@ -65,14 +65,14 @@ func requestDataId() map[string]string {
 	}
 
 	var result AllObjDataIdResponse
-	bkObjDataId := make(map[string]string, 0)
+	bkObjDataId := make(map[string]string)
 	err = json.Unmarshal(body, &result)
 	if err == nil && result.Result {
 		for _, info := range result.Data {
 			bkObjDataId[info.BkObjId] = strconv.Itoa(info.BkDataId)
 		}
 	}
-
+	logrus.Debugf("requestDataId return: %v", bkObjDataId)
 	return bkObjDataId
 }
 
@@ -101,6 +101,7 @@ func sendHTTPRequest(url string, httpClient *http.Client, logParams ...interface
 			return nil, err
 		}
 	}
+	logrus.Debugf("sendHTTPRequest body is : %s", body)
 	return body, nil
 }
 

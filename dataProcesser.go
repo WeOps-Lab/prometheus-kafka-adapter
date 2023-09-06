@@ -206,6 +206,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 func getDataId(bkObjectId string) (bkDataId string) {
 	key := fmt.Sprintf("bk_data_id@%v", bkObjectId)
 	if result, found := bkCache.Get(key); found {
+		logrus.Debugf("cache not found data id: %v", bkObjectId)
 		return result.(string)
 	} else {
 		bkObjData := requestDataId()
