@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/prometheus/prometheus/prompb"
+	"github.com/sirupsen/logrus"
 	"math"
 	"strconv"
 	"strings"
@@ -86,11 +87,13 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 
 	bkObjectId, ok := dimensions["bk_obj_id"].(string)
 	if !ok || bkObjectId == "" {
+		logrus.Debugf("bk_obj_id is null: %v", labels)
 		return nil
 	}
 
 	protocol, ok = dimensions[Protocol].(string)
 	if !ok || protocol == "" {
+		logrus.Debugf("protocol is null: %v", labels)
 		return nil
 	}
 
@@ -100,6 +103,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 
 	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
 		if bkDataId = getDataId(bkObjectId); bkDataId == "" {
+			logrus.Debugf("bk_data_id is null: %v", labels)
 			return nil
 		}
 		dimensions["bk_data_id"] = bkDataId
@@ -114,6 +118,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		dimensions["bk_inst_id"] = bkInstId
 
 		if clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string)); clusterId == 0 {
+			logrus.Debugf("can not find k8s pod clusterId: %v", labels)
 			return nil
 		} else {
 			dimensions["cluster"] = clusterId
@@ -122,11 +127,13 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		if podWorkloadInfo, found := bkObjRelaCache.Get(fmt.Sprintf("pod_workload_rel_map@@%v", bkInstId)); found && podWorkloadInfo.(int) != 0 {
 			dimensions["workload"] = podWorkloadInfo.(int)
 		} else {
+			logrus.Debugf("can not find k8s pod workload: %v", labels)
 			return nil
 		}
 
 		if node, ok := dimensions["node"].(string); ok {
 			if dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node); dimensions["node_id"].(int) == 0 {
+				logrus.Debugf("can not find k8s pod node_id: %v", labels)
 				return nil
 			}
 		}
@@ -134,6 +141,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		dimensions["namespace_id"] = getBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
 		namespaceId, ok := dimensions["namespace_id"].(int)
 		if !ok || namespaceId == 0 {
+			logrus.Debugf("can not find k8s pod namespace_id: %v", labels)
 			return nil
 		}
 
@@ -146,6 +154,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 		deleteUselessDimension(&dimensions, k8sPodDimension, true)
 	} else if bkObjectId == K8sNodeObjectId {
 		if clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster"].(string)); clusterId == 0 {
+			logrus.Debugf("can not find k8s pod namespace_id: %v", labels)
 			return nil
 		} else {
 			dimensions["cluster"] = clusterId
@@ -177,6 +186,7 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	if bkInstId != 0 {
 		dimensions["bk_inst_id"] = bkInstId
 	} else {
+		logrus.Debugf("bk_inst_id is null: %v", labels)
 		return nil
 	}
 
