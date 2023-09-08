@@ -52,7 +52,7 @@ func requestDataId() map[string]string {
 	}
 
 	httpClient := createHTTPClient()
-	body, err := sendHTTPRequest(fmt.Sprintf("%s/o/%s/open_api/get_all_data_id", bkAppPaasHost, bkAppWeopsId), httpClient)
+	body, err := sendHTTPRequest(fmt.Sprintf("%s/o/%s/open_api/get_all_data_id/", bkAppPaasHost, bkAppWeopsId), httpClient)
 	if err != nil {
 		logrus.WithError(err).Errorf("response for get_all_data_id error")
 		if failTime, found := bkCache.Get("http_get_data_id_fail"); found {
