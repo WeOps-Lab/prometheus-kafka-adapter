@@ -95,6 +95,13 @@ var (
 			Help: "Count of fail request weops api for data id",
 		})
 
+	weopsObjGetDataIdFailTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "weops_get_obj_data_id_fail",
+			Help: "Count of fail request data id for each object",
+		},
+		[]string{"bk_obj_id"},
+	)
 	getCMDBInfoFailTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "cmdb_get_info_fail",
@@ -119,4 +126,5 @@ func init() {
 	prometheus.MustRegister(weopsProtocolMetricsInputed)
 	prometheus.MustRegister(weopsGetDataIdFailTotal)
 	prometheus.MustRegister(getCMDBInfoFailTotal)
+	prometheus.MustRegister(weopsObjGetDataIdFailTotal)
 }

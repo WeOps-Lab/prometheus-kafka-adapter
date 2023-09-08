@@ -312,8 +312,11 @@ func setUpCmdbInfo() {
 
 	bkObjData := requestDataId()
 	for objId, dataId := range bkObjData {
-		logrus.Debugf("obj_id: %s, data_id: %s", objId, dataId)
-		bkCache.Set(fmt.Sprintf("bk_data_id@%v", objId), dataId, time.Duration(cacheExpiration)*time.Second)
+		if objId != "" && dataId != "" {
+			bkCache.Set(fmt.Sprintf("bk_data_id@%s", objId), dataId, -1)
+		}
+		res, _ := bkCache.Get(fmt.Sprintf("bk_data_id@%s", objId))
+		logrus.Debugf("config cache found data id: %s %s", objId, res)
 	}
 
 	for obj, _ := range objList {

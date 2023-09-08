@@ -203,22 +203,16 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	return
 }
 
-func getDataId(bkObjectId string) (bkDataId string) {
-	key := fmt.Sprintf("bk_data_id@%v", bkObjectId)
-	if result, found := bkCache.Get(key); found {
-		logrus.Debugf("cache not found data id: %v", bkObjectId)
+func getDataId(bkObjectId string) string {
+	key := fmt.Sprintf("bk_data_id@%s", bkObjectId)
+	result, found := bkCache.Get(key)
+	if found {
 		return result.(string)
-	} else {
-		bkObjData := requestDataId()
-		for objId, dataId := range bkObjData {
-			bkCache.Set(fmt.Sprintf("bk_data_id@%v", objId), dataId, time.Duration(cacheExpiration)*time.Second)
-			if objId == bkObjectId {
-				bkDataId = dataId
-			}
-		}
 	}
 
-	return bkDataId
+	weopsObjGetDataIdFailTotal.WithLabelValues(bkObjectId).Add(float64(1))
+	logrus.Debugf("not found data id cache for object: %s", bkObjectId)
+	return ""
 }
 
 func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions map[string]bool, keep bool) {
