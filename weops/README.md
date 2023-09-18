@@ -80,3 +80,8 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 
 #### v1.0.5
 - 优化日志，k8s部分排查
+
+#### v1.0.6
+- 优化日志
+- 修复请求301
+- 修复自定义指标对weops saas接口请求过多问题
