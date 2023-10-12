@@ -65,7 +65,7 @@ func receiveHandler(producer *kafka.Producer, serializer Serializer) func(c *gin
 		for topic, metrics := range metricsPerTopic {
 			t := topic
 			part := kafka.TopicPartition{
-				Partition: kafka.PartitionAny,
+				Partition: int32(kafka.PartitionAny),
 				Topic:     &t,
 			}
 			for _, metric := range metrics {
