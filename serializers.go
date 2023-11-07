@@ -88,9 +88,10 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			}
 
 			// k8s动态维度处理
-			if dimensions[Protocol] == Kubernetes {
-				handleDynDim(metricName, &dimensions, sample)
-			}
+			// TODO: 待删除
+			//if dimensions[Protocol] == Kubernetes {
+			//	handleDynDim(metricName, &dimensions, sample)
+			//}
 			delete(dimensions, Protocol)
 
 			// 数据清洗

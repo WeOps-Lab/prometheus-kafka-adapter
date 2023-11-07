@@ -261,12 +261,13 @@ func labelsIdValHandler(val interface{}) (Id int) {
 }
 
 // 处理k8s指标的动态维度和枚举
-func handleDynDim(metricName string, dimensions *map[string]interface{}, sample prompb.Sample) {
-	if metricName == "kube_node_status_condition" {
-		sample.Value = K8sNodeStatusConditionMap[(*dimensions)["status"].(string)]
-		delete(*dimensions, "status")
-	} else if metricName == "kube_pod_status_phase" {
-		sample.Value = K8sPodStatusPhaseMap[(*dimensions)["phase"].(string)]
-		delete(*dimensions, "phase")
-	}
-}
+// TODO: 待删除
+//func handleDynDim(metricName string, dimensions *map[string]interface{}, sample prompb.Sample) {
+//	if metricName == "kube_node_status_condition" {
+//		sample.Value = K8sNodeStatusConditionMap[(*dimensions)["status"].(string)]
+//		delete(*dimensions, "status")
+//	} else if metricName == "kube_pod_status_phase" {
+//		sample.Value = K8sPodStatusPhaseMap[(*dimensions)["phase"].(string)]
+//		delete(*dimensions, "phase")
+//	}
+//}
