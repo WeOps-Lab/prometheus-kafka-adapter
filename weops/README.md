@@ -85,3 +85,6 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 - 优化日志
 - 修复请求301
 - 修复自定义指标对weops saas接口请求过多问题
+
+#### v1.0.7
+- k8s指标kube_node_status_condition and kube_pod_status_phase动态维度恢复
