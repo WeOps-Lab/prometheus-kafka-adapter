@@ -54,7 +54,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		dimensions := make(map[string]interface{})
 
 		// 过滤指标
-		if (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI || labels[Source] == Automate {
+		if (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI || labels[Source] == Automate || labels[Protocol] == Vector {
 			dimensions = fillUpBkInfo(labels)
 		} else {
 			logrus.WithField("The metrics do not meet the WEOPS conditions: ", labels).Debugln()
@@ -72,8 +72,8 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		}
 
 		var t string
-		if dimensions["bk_data_id"] != "" {
-			t = fmt.Sprintf("0bkmonitor_%v0", dimensions["bk_data_id"])
+		if dataID, ok := dimensions["bk_data_id"].(string); ok && dataID != "" {
+			t = fmt.Sprintf("0bkmonitor_%v0", dataID)
 			for _, key := range []string{"bk_data_id", "job"} {
 				delete(dimensions, key)
 			}
@@ -92,17 +92,25 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			//if dimensions[Protocol] == Kubernetes {
 			//	handleDynDim(metricName, &dimensions, sample)
 			//}
+
+			// 蓝鲸链路数据判断 TODO: 字段待定
+			bkSource := false
+			if dimensions["protocol"] == Vector {
+				bkSource = true
+			}
+
 			delete(dimensions, Protocol)
+			deleteUselessDimension(&dimensions, commonDimensionFilter, false)
 
 			// 数据清洗
-			data, err := formatMetricsData(metricName, dimensions, sample)
+			data, err := formatMetricsData(metricName, dimensions, sample, bkSource)
 			if err != nil {
 				serializeFailed.Add(float64(1))
 				logrus.WithError(err).Errorln("couldn't marshal timeseries")
 			}
 
 			serializeTotal.Add(float64(1))
-			weopsTopicSerializeTotal.WithLabelValues(dimensions["bk_obj_id"].(string), t).Add(float64(1))
+			weopsTopicSerializeTotal.WithLabelValues(t).Add(float64(1))
 			result[t] = append(result[t], data)
 		}
 	}

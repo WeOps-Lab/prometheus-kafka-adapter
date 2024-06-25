@@ -14,6 +14,8 @@
 
 package main
 
+import "time"
+
 const (
 	Protocol             = "protocol"
 	Source               = "source"
@@ -21,6 +23,7 @@ const (
 	Kubernetes           = "kubernetes"
 	SNMP                 = "snmp"
 	IPMI                 = "ipmi"
+	Vector               = "vector"
 	CLOUD                = "cloud"
 	K8sPodObjectId       = "k8s_pod"
 	K8sNodeObjectId      = "bk_node"
@@ -110,6 +113,40 @@ type MetricsData struct {
 		Metrics   map[string]float64     `json:"metrics"`
 		Timestamp int64                  `json:"timestamp"`
 	} `json:"data"`
+}
+
+// BKMetricsData 蓝鲸自有链路指标格式
+type BKMetricsData struct {
+	Timestamp  time.Time  `json:"@timestamp"`
+	BkBizId    int        `json:"bk_biz_id"`
+	BkCloudId  int        `json:"bk_cloud_id"`
+	DataId     int        `json:"dataid"`
+	GroupInfo  GroupInfo  `json:"group_info"`
+	Prometheus Prometheus `json:"prometheus"`
+	Service    string     `json:"service"`
+	Type       string     `json:"type"`
+}
+
+// Prometheus represents the Prometheus data structure
+type Prometheus struct {
+	Collector Collector `json:"collector"`
+}
+
+// Collector represents the Collector data structure
+type Collector struct {
+	Metrics Metrics `json:"metrics"`
+}
+
+type GroupInfo []struct {
+	BkCollectConfigId string `json:"bk_collect_config_id"`
+}
+
+// Metrics represents the Metrics data structure
+type Metrics []struct {
+	Key       string                 `json:"key"`
+	Labels    map[string]interface{} `json:"labels"`
+	Timestamp int64                  `json:"timestamp"`
+	Value     float64                `json:"value"`
 }
 
 type MetricsFileData struct {

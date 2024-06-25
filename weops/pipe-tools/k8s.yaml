@@ -50,7 +50,7 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
-        kubernetes.io/hostname: 10.10.90.113
+        kubernetes.io/hostname: 10.10.90.114
       shareProcessNamespace: true
       containers:
       - name: weops-kafka-adapter
@@ -90,6 +90,6 @@ spec:
   - port: 8090
     protocol: TCP
     targetPort: 8090
-    nodePort:
+    nodePort: 8091
   selector:
     app: weops-kafka-adapter

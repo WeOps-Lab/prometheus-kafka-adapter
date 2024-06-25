@@ -23,23 +23,57 @@ func handleSpecialValue(value float64) float64 {
 }
 
 // formatMetricsData 标准化输出数据
-func formatMetricsData(metricName string, dimensions map[string]interface{}, sample prompb.Sample) (data []byte, err error) {
-	var timestamp int64
-	timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
-	handleData := MetricsData{
-		Data: []struct {
-			Dimension map[string]interface{} `json:"dimension"`
-			Metrics   map[string]float64     `json:"metrics"`
-			Timestamp int64                  `json:"timestamp"`
-		}{
-			{
-				Dimension: dimensions,
-				Metrics: map[string]float64{
-					metricName: handleSpecialValue(sample.Value),
+func formatMetricsData(metricName string, dimensions map[string]interface{}, sample prompb.Sample, bkSource bool) (data []byte, err error) {
+	var handleData interface{}
+
+	if bkSource {
+		strVal := fmt.Sprintf("%.2f", handleSpecialValue(sample.Value))
+		metricsValue, _ := strconv.ParseFloat(strVal, 64)
+		bkBizId, _ := strconv.Atoi(dimensions["bk_biz_id"].(string))
+		bkCloudId, _ := strconv.Atoi(dimensions["bk_cloud_id"].(string))
+
+		handleData = BKMetricsData{
+			Timestamp: time.Unix(sample.Timestamp/1000, (sample.Timestamp%1000)*int64(time.Millisecond)),
+			BkBizId:   bkBizId,
+			BkCloudId: bkCloudId,
+			GroupInfo: GroupInfo{
+				{
+					BkCollectConfigId: dimensions["bk_collect_config_id"].(string),
 				},
-				Timestamp: timestamp,
 			},
-		},
+			Prometheus: Prometheus{
+				Collector: Collector{
+					Metrics: Metrics{
+						{
+							Key:       metricName,
+							Labels:    dimensions,
+							Timestamp: time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Second),
+							Value:     metricsValue,
+						},
+					},
+				},
+			},
+			Service: "prometheus",
+			Type:    "metricbeat",
+		}
+	} else {
+		var timestamp int64
+		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
+		handleData = MetricsData{
+			Data: []struct {
+				Dimension map[string]interface{} `json:"dimension"`
+				Metrics   map[string]float64     `json:"metrics"`
+				Timestamp int64                  `json:"timestamp"`
+			}{
+				{
+					Dimension: dimensions,
+					Metrics: map[string]float64{
+						metricName: handleSpecialValue(sample.Value),
+					},
+					Timestamp: timestamp,
+				},
+			},
+		}
 	}
 
 	return json.Marshal(handleData)
@@ -76,6 +110,11 @@ func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) 
 	dimensions = make(map[string]interface{})
 	for key, value := range labels {
 		dimensions[key] = value
+	}
+
+	// 自有链路计算指标直接返回
+	if labels[Protocol] == Vector {
+		return dimensions
 	}
 
 	var (

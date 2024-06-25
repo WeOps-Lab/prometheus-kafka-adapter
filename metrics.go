@@ -87,7 +87,7 @@ var (
 			Name: "weops_metrics_topic_serialized_total",
 			Help: "Count of each topic serialization requests",
 		},
-		[]string{"bk_object_id", "topic"},
+		[]string{"topic"},
 	)
 	weopsGetDataIdFailTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
