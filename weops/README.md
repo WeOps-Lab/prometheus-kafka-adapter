@@ -88,3 +88,7 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 
 #### v1.0.7
 - k8s指标kube_node_status_condition and kube_pod_status_phase动态维度恢复
+
+#### v1.1.0
+- 新增蓝鲸计算指标功能
+- 增加对vector数据来源的监控数据处理
