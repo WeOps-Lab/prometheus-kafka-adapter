@@ -13,13 +13,14 @@ import (
 
 // handleSpecialValue 处理+Inf、-Inf、NaN特殊值
 func handleSpecialValue(value float64) float64 {
-	if math.IsInf(value, -1) || math.IsNaN(value) {
-		return float64(0)
+	switch {
+	case math.IsInf(value, -1), math.IsNaN(value):
+		return 0
+	case math.IsInf(value, 1):
+		return -1
+	default:
+		return value
 	}
-	if math.IsInf(value, 1) {
-		return float64(-1)
-	}
-	return value
 }
 
 // formatMetricsData 标准化输出数据
@@ -80,8 +81,10 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 }
 
 // k8sMetricsPreHandler 判断k8s指标，并补充k8s类的bk_obj_id
-func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
-	if nodeMetricName, nodeMetricsExist := K8sNodeMetrics[labels["__name__"]]; nodeMetricsExist {
+func k8sMetricsPreHandler(labels map[string]string) bool {
+	metricName := labels["__name__"]
+
+	if nodeMetricName, nodeMetricsExist := K8sNodeMetrics[metricName]; nodeMetricsExist {
 		if _, ok := labels["node"]; !ok {
 			return false
 		}
@@ -90,7 +93,9 @@ func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
 		labels["instance_name"] = labels["node"]
 		labels["cluster_name"] = labels["cluster"]
 		return true
-	} else if podMetricName, podMetricsExist := K8sPodMetrics[labels["__name__"]]; podMetricsExist {
+	}
+
+	if podMetricName, podMetricsExist := K8sPodMetrics[metricName]; podMetricsExist {
 		if _, ok := labels["pod"]; !ok {
 			return false
 		}
@@ -99,147 +104,170 @@ func k8sMetricsPreHandler(labels map[string]string) (exist bool) {
 		labels["instance_name"] = labels["uid"]
 		labels["cluster_name"] = labels["cluster"]
 		return true
-	} else {
-		return false
 	}
+
+	return false
 }
 
 // fillUpBkInfo 补充蓝鲸指标信息
-func fillUpBkInfo(labels map[string]string) (dimensions map[string]interface{}) {
-	// 先填入所有维度信息
-	dimensions = make(map[string]interface{})
+func fillUpBkInfo(labels map[string]string) map[string]interface{} {
+	// 初始化维度信息
+	dimensions := make(map[string]interface{})
 	for key, value := range labels {
 		dimensions[key] = value
 	}
 
-	// 自有链路计算指标直接返回
+	// 直接返回 Vector 协议的维度信息
 	if labels[Protocol] == Vector {
 		return dimensions
 	}
 
-	var (
-		bkInstId   int
-		bkDataId   string
-		protocol   string
-		bkObjectId string
-	)
-
+	// 验证必需字段
 	bkObjectId, ok := dimensions["bk_obj_id"].(string)
 	if !ok || bkObjectId == "" {
 		logrus.Debugf("bk_obj_id is null: %v", labels)
 		return nil
 	}
 
-	protocol, ok = dimensions[Protocol].(string)
+	protocol, ok := dimensions[Protocol].(string)
 	if !ok || protocol == "" {
 		logrus.Debugf("protocol is null: %v", labels)
 		return nil
 	}
 
+	// 更新 objList
 	if !objList[bkObjectId] {
 		objList[bkObjectId] = true
 	}
 
+	// 处理 bk_data_id
 	if val, ok := dimensions["bk_data_id"]; !ok || val == nil {
-		if bkDataId = getDataId(bkObjectId); bkDataId == "" {
+		if bkDataId := getDataId(bkObjectId); bkDataId == "" {
 			logrus.Debugf("bk_data_id is null: %v", labels)
 			return nil
+		} else {
+			dimensions["bk_data_id"] = bkDataId
 		}
-		dimensions["bk_data_id"] = bkDataId
 	}
 
-	// 第二层对node、pod分别处理
-	if bkObjectId == K8sPodObjectId {
-		if bkInstId = getBkInstId(K8sPodObjectId, dimensions["instance_name"].(string)); bkInstId == 0 {
+	// 处理 K8sPodObjectId 和 K8sNodeObjectId
+	switch bkObjectId {
+	case K8sPodObjectId:
+		if !handleK8sPodObjectId(dimensions, labels) {
 			return nil
 		}
-		dimensions["pod_id"] = bkInstId
-		dimensions["bk_inst_id"] = bkInstId
-
-		if clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string)); clusterId == 0 {
-			logrus.Debugf("can not find k8s pod clusterId: %v", labels)
-			return nil
-		} else {
-			dimensions["cluster"] = clusterId
-		}
-
-		if podWorkloadInfo, found := bkObjRelaCache.Get(fmt.Sprintf("pod_workload_rel_map@@%v", bkInstId)); found && podWorkloadInfo.(int) != 0 {
-			dimensions["workload"] = podWorkloadInfo.(int)
-		} else {
-			logrus.Debugf("can not find k8s pod workload: %v", labels)
+	case K8sNodeObjectId:
+		if !handleK8sNodeObjectId(dimensions, labels) {
 			return nil
 		}
-
-		if node, ok := dimensions["node"].(string); ok {
-			if dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node); dimensions["node_id"].(int) == 0 {
-				logrus.Debugf("can not find k8s pod node_id: %v", labels)
-				return nil
-			}
-		}
-
-		dimensions["namespace_id"] = getBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
-		namespaceId, ok := dimensions["namespace_id"].(int)
-		if !ok || namespaceId == 0 {
-			logrus.Debugf("can not find k8s pod namespace_id: %v", labels)
-			return nil
-		}
-
-		if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sNameSpaceObjectId)); bizFound {
-			if bizId, bizIdFound := bizInfo.(map[int]int)[namespaceId]; bizIdFound {
-				dimensions["bk_biz_id"] = bizId
-			}
-		}
-		k8sDimisionHandler(&dimensions, k8sPodDimension)
-		deleteUselessDimension(&dimensions, k8sPodDimension, true)
-	} else if bkObjectId == K8sNodeObjectId {
-		if clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster"].(string)); clusterId == 0 {
-			logrus.Debugf("can not find k8s pod namespace_id: %v", labels)
-			return nil
-		} else {
-			dimensions["cluster"] = clusterId
-		}
-
-		if node, ok := dimensions["node"].(string); ok {
-			dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node)
-		}
-
-		if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sClusterObjectId)); bizFound {
-			if bizId, bizIdFound := bizInfo.(map[int]int)[dimensions["cluster"].(int)]; bizIdFound {
-				dimensions["bk_biz_id"] = bizId
-			}
-		}
-		k8sDimisionHandler(&dimensions, k8sNodeDimension)
-		deleteUselessDimension(&dimensions, k8sNodeDimension, true)
 	}
 
+	// 处理 SNMP 和 IPMI 协议
 	if protocol == SNMP || protocol == IPMI {
 		dimensions["instance_name"] = dimensions["bk_inst_name"]
 	}
 
-	if val, ok := dimensions["bk_inst_id"]; !ok {
-		bkInstId = getBkInstId(bkObjectId, dimensions["instance_name"].(string))
-	} else {
-		bkInstId = labelsIdValHandler(val)
-	}
-
-	if bkInstId != 0 {
-		dimensions["bk_inst_id"] = bkInstId
-	} else {
+	// 处理 bk_inst_id
+	bkInstId := handleBkInstId(dimensions, bkObjectId)
+	if bkInstId == 0 {
 		logrus.Debugf("bk_inst_id is null: %v", labels)
 		return nil
 	}
+	dimensions["bk_inst_id"] = bkInstId
 
+	// 处理 bk_biz_id
 	if bkObjectId != K8sNodeObjectId && bkObjectId != K8sPodObjectId {
-		// 业务判断
-		if val, ok := dimensions["bk_biz_id"]; !ok {
-			dimensions["bk_biz_id"] = getBkBizId(bkObjectId, bkInstId)
+		handleBkBizId(dimensions, bkObjectId, bkInstId)
+	}
+
+	return dimensions
+}
+
+func handleK8sPodObjectId(dimensions map[string]interface{}, labels map[string]string) bool {
+	bkInstId := getBkInstId(K8sPodObjectId, dimensions["instance_name"].(string))
+	if bkInstId == 0 {
+		return false
+	}
+	dimensions["pod_id"] = bkInstId
+	dimensions["bk_inst_id"] = bkInstId
+
+	clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string))
+	if clusterId == 0 {
+		logrus.Debugf("cannot find k8s pod clusterId: %v", labels)
+		return false
+	}
+	dimensions["cluster"] = clusterId
+
+	if podWorkloadInfo, found := bkObjRelaCache.Get(fmt.Sprintf("pod_workload_rel_map@@%v", bkInstId)); found && podWorkloadInfo.(int) != 0 {
+		dimensions["workload"] = podWorkloadInfo.(int)
+	} else {
+		logrus.Debugf("cannot find k8s pod workload: %v", labels)
+		return false
+	}
+
+	if node, ok := dimensions["node"].(string); ok {
+		if nodeId := getBkInstId(K8sNodeObjectId, node); nodeId != 0 {
+			dimensions["node_id"] = nodeId
 		} else {
-			dimensions["bk_biz_id"] = labelsIdValHandler(val)
+			logrus.Debugf("cannot find k8s pod node_id: %v", labels)
+			return false
 		}
 	}
 
-	deleteUselessDimension(&dimensions, commonDimensionFilter, false)
-	return
+	namespaceId := getBkInstId(K8sNameSpaceObjectId, fmt.Sprintf("%v (%v)", dimensions["namespace"].(string), dimensions["cluster_name"].(string)))
+	if namespaceId == 0 {
+		logrus.Debugf("cannot find k8s pod namespace_id: %v", labels)
+		return false
+	}
+	dimensions["namespace_id"] = namespaceId
+
+	if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sNameSpaceObjectId)); bizFound {
+		if bizId, bizIdFound := bizInfo.(map[int]int)[namespaceId]; bizIdFound {
+			dimensions["bk_biz_id"] = bizId
+		}
+	}
+
+	k8sDimisionHandler(&dimensions, k8sPodDimension)
+	deleteUselessDimension(&dimensions, k8sPodDimension, true)
+	return true
+}
+
+func handleK8sNodeObjectId(dimensions map[string]interface{}, labels map[string]string) bool {
+	clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
+	if clusterId == 0 {
+		logrus.Debugf("cannot find k8s node clusterId: %v", labels)
+		return false
+	}
+	dimensions["cluster"] = clusterId
+
+	if node, ok := dimensions["node"].(string); ok {
+		dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node)
+	}
+
+	if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sClusterObjectId)); bizFound {
+		if bizId, bizIdFound := bizInfo.(map[int]int)[clusterId]; bizIdFound {
+			dimensions["bk_biz_id"] = bizId
+		}
+	}
+
+	k8sDimisionHandler(&dimensions, k8sNodeDimension)
+	deleteUselessDimension(&dimensions, k8sNodeDimension, true)
+	return true
+}
+
+func handleBkInstId(dimensions map[string]interface{}, bkObjectId string) int {
+	if val, ok := dimensions["bk_inst_id"]; ok {
+		return labelsIdValHandler(val)
+	}
+	return getBkInstId(bkObjectId, dimensions["instance_name"].(string))
+}
+
+func handleBkBizId(dimensions map[string]interface{}, bkObjectId string, bkInstId int) {
+	if val, ok := dimensions["bk_biz_id"]; ok {
+		dimensions["bk_biz_id"] = labelsIdValHandler(val)
+	} else {
+		dimensions["bk_biz_id"] = getBkBizId(bkObjectId, bkInstId)
+	}
 }
 
 func getDataId(bkObjectId string) string {
@@ -257,10 +285,14 @@ func getDataId(bkObjectId string) string {
 func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions map[string]bool, keep bool) {
 	mutex.Lock()
 	defer mutex.Unlock()
+
 	for key := range *dimensions {
-		if !objDimensions[strings.ToLower(key)] && keep {
+		lowerKey := strings.ToLower(key)
+		_, exists := objDimensions[lowerKey]
+
+		if keep && !exists {
 			delete(*dimensions, key)
-		} else if objDimensions[strings.ToLower(key)] && !keep {
+		} else if !keep && exists {
 			if key != "__name__" {
 				(*dimensions)[fmt.Sprintf("__%v__", key)] = (*dimensions)[key]
 			}
@@ -271,42 +303,30 @@ func deleteUselessDimension(dimensions *map[string]interface{}, objDimensions ma
 
 // k8s指标中dimision需要保留的维度信息
 func k8sDimisionHandler(dimensions *map[string]interface{}, k8sDimensionKeep map[string]bool) {
+	metricDimension, exists := (*dimensions)["dimision"]
+	if !exists || metricDimension == nil {
+		return
+	}
+
+	dimensionList := strings.Split(metricDimension.(string), ",")
 	mutex.Lock()
 	defer mutex.Unlock()
-	metricDimension := (*dimensions)["dimision"]
-	if metricDimension != nil {
-		dimensionList := strings.Split(metricDimension.(string), ",")
-		for _, s := range dimensionList {
-			_, ok := (*dimensions)[s]
-			if ok {
-				k8sDimensionKeep[s] = true
-			}
+
+	for _, s := range dimensionList {
+		if _, ok := (*dimensions)[s]; ok {
+			k8sDimensionKeep[s] = true
 		}
 	}
 }
 
-func labelsIdValHandler(val interface{}) (Id int) {
+func labelsIdValHandler(val interface{}) int {
 	switch v := val.(type) {
 	case int:
-		return val.(int)
+		return v
 	case string:
 		if intValue, err := strconv.Atoi(v); err == nil {
 			return intValue
 		}
-	default:
-		return Id
 	}
-	return Id
+	return 0
 }
-
-// 处理k8s指标的动态维度和枚举
-// TODO: 待删除
-//func handleDynDim(metricName string, dimensions *map[string]interface{}, sample prompb.Sample) {
-//	if metricName == "kube_node_status_condition" {
-//		sample.Value = K8sNodeStatusConditionMap[(*dimensions)["status"].(string)]
-//		delete(*dimensions, "status")
-//	} else if metricName == "kube_pod_status_phase" {
-//		sample.Value = K8sPodStatusPhaseMap[(*dimensions)["phase"].(string)]
-//		delete(*dimensions, "phase")
-//	}
-//}
