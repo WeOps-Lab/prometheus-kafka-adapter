@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/linkedin/goavro"
 	"github.com/prometheus/prometheus/prompb"
@@ -54,59 +55,40 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 		dimensions := make(map[string]interface{})
 
 		// 过滤指标
-		if (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI || labels[Source] == Automate || labels[Protocol] == Vector {
-			dimensions = fillUpBkInfo(labels)
-		} else {
+		if !shouldProcess(labels) {
 			logrus.WithField("The metrics do not meet the WEOPS conditions: ", labels).Debugln()
 			weopsMetricsFiltered.WithLabelValues(labels[Protocol]).Add(float64(1))
 			continue
 		}
 
-		metricName := labels["__name__"]
-
-		// 过滤缺少重要信息的指标
+		dimensions = fillUpBkInfo(labels)
 		if dimensions == nil {
 			logrus.WithField("Dropping metrics because of null dimension: ", labels).Debugln()
-			weopsMetricsDropped.WithLabelValues(labels[Protocol], metricName).Add(float64(1))
+			weopsMetricsDropped.WithLabelValues(labels[Protocol], labels["__name__"]).Add(float64(1))
 			continue
 		}
 
-		var t string
-		if dataID, ok := dimensions["bk_data_id"].(string); ok && dataID != "" {
-			t = fmt.Sprintf("0bkmonitor_%v0", dataID)
-			for _, key := range []string{"bk_data_id", "job"} {
-				delete(dimensions, key)
-			}
-		} else {
+		t, err := getTopic(dimensions)
+		if err != nil {
+			logrus.WithField("Empty data id: ", labels).Debugln()
 			continue
 		}
 
 		for _, sample := range ts.Samples {
-			if !filter(metricName, labels) {
+			if !filter(labels["__name__"], labels) {
 				objectsFiltered.Add(float64(1))
 				continue
 			}
 
-			// k8s动态维度处理
-			// TODO: 待删除
-			//if dimensions[Protocol] == Kubernetes {
-			//	handleDynDim(metricName, &dimensions, sample)
-			//}
-
-			// 蓝鲸链路数据判断 TODO: 字段待定
-			bkSource := false
-			if dimensions["protocol"] == Vector {
-				bkSource = true
-			}
-
+			bkSource := dimensions["protocol"] == Vector
 			delete(dimensions, Protocol)
 			deleteUselessDimension(&dimensions, commonDimensionFilter, false)
 
-			// 数据清洗
-			data, err := formatMetricsData(metricName, dimensions, sample, bkSource)
+			data, err := formatMetricsData(labels["__name__"], dimensions, sample, bkSource)
 			if err != nil {
 				serializeFailed.Add(float64(1))
 				logrus.WithError(err).Errorln("couldn't marshal timeseries")
+				continue
 			}
 
 			serializeTotal.Add(float64(1))
@@ -194,4 +176,21 @@ func filter(name string, labels map[string]string) bool {
 		}
 	}
 	return false
+}
+
+// shouldProcess 判断是否需要处理该指标
+func shouldProcess(labels map[string]string) bool {
+	return (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI || labels[Source] == Automate || labels[Protocol] == Vector
+}
+
+// getTopic 提取topic并删除无用的维度信息
+func getTopic(dimensions map[string]interface{}) (string, error) {
+	if dataID, ok := dimensions["bk_data_id"].(string); ok && dataID != "" {
+		t := fmt.Sprintf("0bkmonitor_%v0", dataID)
+		for _, key := range []string{"bk_data_id", "job"} {
+			delete(dimensions, key)
+		}
+		return t, nil
+	}
+	return "", errors.New("dataID is empty or not found")
 }
