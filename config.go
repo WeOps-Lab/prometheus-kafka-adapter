@@ -201,11 +201,13 @@ func init() {
 	//初始化获取cmdb全量信息
 	setUpCmdbInfo()
 
-	//定时执行获取cmdb全量信息
-	_, err = c.AddFunc(fmt.Sprintf("@every %vs", cacheExpiration), setUpCmdbInfo)
-	if err != nil {
-		logrus.WithError(err).Fatal("set up cmdb info error")
-	}
+	//初始化data id
+	setUpDataId()
+
+	// 定时执行获取cmdb全量信息和data id
+	addCronJob(c, setUpCmdbInfo, "set up cmdb info")
+	addCronJob(c, setUpDataId, "set up data id")
+
 	c.Start()
 }
 
@@ -297,6 +299,17 @@ func parseK8sMetricsFile(filePath string) {
 	}
 }
 
+func setUpDataId() {
+	bkObjData := requestDataId()
+	for objId, dataId := range bkObjData {
+		if objId != "" && dataId != "" {
+			bkCache.Set(fmt.Sprintf("bk_data_id@%s", objId), dataId, -1)
+		}
+		res, _ := bkCache.Get(fmt.Sprintf("bk_data_id@%s", objId))
+		logrus.Debugf("config cache found data id: %s %s", objId, res)
+	}
+}
+
 func setUpCmdbInfo() {
 	var wg sync.WaitGroup
 	processObject := func(obj string) {
@@ -308,15 +321,6 @@ func setUpCmdbInfo() {
 				getBizFromSet(data.BkAsstInstId)
 			}
 		}
-	}
-
-	bkObjData := requestDataId()
-	for objId, dataId := range bkObjData {
-		if objId != "" && dataId != "" {
-			bkCache.Set(fmt.Sprintf("bk_data_id@%s", objId), dataId, -1)
-		}
-		res, _ := bkCache.Get(fmt.Sprintf("bk_data_id@%s", objId))
-		logrus.Debugf("config cache found data id: %s %s", objId, res)
 	}
 
 	for obj, _ := range objList {
@@ -357,4 +361,14 @@ func setUpCmdbInfo() {
 	}
 
 	wg.Wait()
+}
+
+// addCronJob 添加定时任务
+func addCronJob(c *cron.Cron, jobFunc func(), jobName string) {
+	_, err := c.AddFunc(fmt.Sprintf("@every %vs", cacheExpiration), jobFunc)
+	if err != nil {
+		logrus.WithError(err).Fatalf("%s error", jobName)
+	} else {
+		logrus.Infof("Scheduled %s job successfully", jobName)
+	}
 }
