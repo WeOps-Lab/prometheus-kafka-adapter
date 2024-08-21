@@ -155,7 +155,9 @@ func fillUpBkInfo(labels map[string]string) map[string]interface{} {
 
 	// 更新 objList
 	if !objList[bkObjectId] {
+		mutex.Lock()
 		objList[bkObjectId] = true
+		mutex.Unlock()
 	}
 
 	// 处理 bk_data_id
