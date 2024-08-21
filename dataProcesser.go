@@ -30,8 +30,26 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 	if bkSource {
 		strVal := fmt.Sprintf("%.2f", handleSpecialValue(sample.Value))
 		metricsValue, _ := strconv.ParseFloat(strVal, 64)
-		bkBizId, _ := strconv.Atoi(dimensions["bk_biz_id"].(string))
-		bkCloudId, _ := strconv.Atoi(dimensions["bk_cloud_id"].(string))
+
+		// 检查并断言 dimensions["bk_biz_id"]
+		bkBizIdStr, ok := dimensions["bk_biz_id"].(string)
+		if !ok {
+			return nil, fmt.Errorf("bk_biz_id is not a string or is missing")
+		}
+		bkBizId, err := strconv.Atoi(bkBizIdStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert bk_biz_id to int: %v", err)
+		}
+
+		// 检查并断言 dimensions["bk_cloud_id"]
+		bkCloudIdStr, ok := dimensions["bk_cloud_id"].(string)
+		if !ok {
+			return nil, fmt.Errorf("bk_cloud_id is not a string or is missing")
+		}
+		bkCloudId, err := strconv.Atoi(bkCloudIdStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert bk_cloud_id to int: %v", err)
+		}
 
 		handleData = BKMetricsData{
 			Timestamp: time.Unix(sample.Timestamp/1000, (sample.Timestamp%1000)*int64(time.Millisecond)),
