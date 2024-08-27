@@ -87,7 +87,7 @@ func Serialize(s Serializer, req *prompb.WriteRequest) (map[string][][]byte, err
 			data, err := formatMetricsData(labels["__name__"], dimensions, sample, bkSource)
 			if err != nil {
 				serializeFailed.Add(float64(1))
-				logrus.WithError(err).Errorln("couldn't marshal timeseries")
+				logrus.WithError(err).Errorf("couldn't marshal timeseries: {dimensions: %+v}", dimensions)
 				continue
 			}
 
