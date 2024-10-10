@@ -176,8 +176,11 @@ func fillUpBkInfo(labels map[string]string) map[string]interface{} {
 		}
 	}
 
-	// 处理 K8sPodObjectId 和 K8sNodeObjectId
+	// 处理K8s对象
 	switch bkObjectId {
+	// cluster类全放通
+	case K8sClusterObjectId:
+		return dimensions
 	case K8sPodObjectId:
 		if !handleK8sPodObjectId(dimensions, labels) {
 			return nil
