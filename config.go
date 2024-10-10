@@ -297,6 +297,11 @@ func parseK8sMetricsFile(filePath string) {
 	for podKey, podMetric := range metrics.PodMetrics {
 		K8sPodMetrics[podKey] = podMetric
 	}
+
+	for clusterKey, clusterMetric := range metrics.CLusterMetrics {
+		K8sClusterMetrics[clusterKey] = clusterMetric
+	}
+
 }
 
 func setUpDataId() {

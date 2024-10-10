@@ -102,6 +102,12 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 func k8sMetricsPreHandler(labels map[string]string) bool {
 	metricName := labels["__name__"]
 
+	if clusterMetricName, clusterMetricsExist := K8sClusterMetrics[metricName]; clusterMetricsExist {
+		labels["__name__"] = clusterMetricName
+		labels["bk_obj_id"] = K8sClusterObjectId
+		return true
+	}
+
 	if nodeMetricName, nodeMetricsExist := K8sNodeMetrics[metricName]; nodeMetricsExist {
 		if _, ok := labels["node"]; !ok {
 			return false

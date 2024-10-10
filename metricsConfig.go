@@ -101,6 +101,9 @@ var k8sNodeDimension = map[string]bool{
 	"node_id":       true,
 }
 
+// K8sClusterMetrics cluster自定义指标
+var K8sClusterMetrics = make(map[string]string)
+
 var K8sNodeStatusConditionMap = map[string]float64{
 	"false":   float64(0),
 	"true":    float64(1),
@@ -150,6 +153,7 @@ type Metrics []struct {
 }
 
 type MetricsFileData struct {
-	NodeMetrics map[string]string `yaml:"K8sNodeMetrics"`
-	PodMetrics  map[string]string `yaml:"K8sPodMetrics"`
+	NodeMetrics    map[string]string `yaml:"K8sNodeMetrics"`
+	PodMetrics     map[string]string `yaml:"K8sPodMetrics"`
+	CLusterMetrics map[string]string `yaml:"K8sClusterMetrics"`
 }
