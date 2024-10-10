@@ -95,3 +95,6 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 
 #### v1.1.1
 - 修复并发使用变量问题
+
+#### v1.1.2
+- 增加k8s cluster指标
