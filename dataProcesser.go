@@ -184,6 +184,7 @@ func fillUpBkInfo(labels map[string]string) map[string]interface{} {
 			dimensions["instance_name"] = clusterInstName
 		} else {
 			logrus.Debugf("%v cluster dimension is null", K8sClusterObjectId)
+			return nil
 		}
 	case K8sPodObjectId:
 		if !handleK8sPodObjectId(dimensions, labels) {
