@@ -180,7 +180,11 @@ func fillUpBkInfo(labels map[string]string) map[string]interface{} {
 	switch bkObjectId {
 	// cluster类全放通
 	case K8sClusterObjectId:
-		return dimensions
+		if clusterInstName, ok := dimensions["cluster"]; ok {
+			dimensions["instance_name"] = clusterInstName
+		} else {
+			logrus.Debugf("%v cluster dimension is null", K8sClusterObjectId)
+		}
 	case K8sPodObjectId:
 		if !handleK8sPodObjectId(dimensions, labels) {
 			return nil
@@ -205,7 +209,7 @@ func fillUpBkInfo(labels map[string]string) map[string]interface{} {
 	dimensions["bk_inst_id"] = bkInstId
 
 	// 处理 bk_biz_id
-	if bkObjectId != K8sNodeObjectId && bkObjectId != K8sPodObjectId {
+	if bkObjectId != K8sNodeObjectId && bkObjectId != K8sPodObjectId && bkObjectId != K8sClusterObjectId {
 		handleBkBizId(dimensions, bkObjectId, bkInstId)
 	}
 
