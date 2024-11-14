@@ -98,3 +98,6 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 
 #### v1.1.2
 - 增加k8s cluster指标
+
+#### v1.1.3
+- 只保留固定的ipmi指标
