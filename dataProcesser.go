@@ -133,6 +133,19 @@ func k8sMetricsPreHandler(labels map[string]string) bool {
 	return false
 }
 
+// IpmiMetricsPreHandler 判断telegraf ipmi指标，并补充信息
+func IpmiMetricsPreHandler(labels map[string]string) bool {
+	metricName := labels["__name__"]
+
+	if MetricName, MetricsExist := TelegrafIpmiMetrics[metricName]; MetricsExist {
+		labels["__name__"] = MetricName
+		labels["bk_obj_id"] = IPMI
+		return true
+	}
+
+	return false
+}
+
 // fillUpBkInfo 补充蓝鲸指标信息
 func fillUpBkInfo(labels map[string]string) map[string]interface{} {
 	// 初始化维度信息

@@ -104,6 +104,9 @@ var k8sNodeDimension = map[string]bool{
 // K8sClusterMetrics cluster自定义指标
 var K8sClusterMetrics = make(map[string]string)
 
+// TelegrafIpmiMetrics telegraf采集的ipmi指标
+var TelegrafIpmiMetrics = make(map[string]string)
+
 var K8sNodeStatusConditionMap = map[string]float64{
 	"false":   float64(0),
 	"true":    float64(1),
@@ -153,7 +156,8 @@ type Metrics []struct {
 }
 
 type MetricsFileData struct {
-	NodeMetrics    map[string]string `yaml:"K8sNodeMetrics"`
-	PodMetrics     map[string]string `yaml:"K8sPodMetrics"`
-	CLusterMetrics map[string]string `yaml:"K8sClusterMetrics"`
+	NodeMetrics         map[string]string `yaml:"K8sNodeMetrics"`
+	PodMetrics          map[string]string `yaml:"K8sPodMetrics"`
+	CLusterMetrics      map[string]string `yaml:"K8sClusterMetrics"`
+	TelegrafIpmiMetrics map[string]string `yaml:"TelegrafIpmiMetrics"`
 }

@@ -180,7 +180,7 @@ func filter(name string, labels map[string]string) bool {
 
 // shouldProcess 判断是否需要处理该指标
 func shouldProcess(labels map[string]string) bool {
-	return (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI || labels[Source] == Automate || labels[Protocol] == Vector
+	return (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI && IpmiMetricsPreHandler(labels) || labels[Source] == Automate || labels[Protocol] == Vector
 }
 
 // getTopic 提取topic并删除无用的维度信息

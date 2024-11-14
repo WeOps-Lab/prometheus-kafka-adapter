@@ -196,7 +196,7 @@ func init() {
 		logSkipReceive = true
 	}
 
-	parseK8sMetricsFile(metricsFilePath)
+	parseMetricsFile(metricsFilePath)
 
 	//初始化获取cmdb全量信息
 	setUpCmdbInfo()
@@ -276,8 +276,8 @@ func parseTopicTemplate(tpl string) (*template.Template, error) {
 	return template.New("topic").Funcs(funcMap).Parse(tpl)
 }
 
-// parseK8sMetricsFile 加载k8s指标
-func parseK8sMetricsFile(filePath string) {
+// parseMetricsFile 加载固定指标项(k8s、telegraf ipmi)
+func parseMetricsFile(filePath string) {
 	yamlFile, err := os.ReadFile(filePath)
 	if err != nil {
 		logrus.Errorf("Failed to read %v: %v", filePath, err)
@@ -300,6 +300,10 @@ func parseK8sMetricsFile(filePath string) {
 
 	for clusterKey, clusterMetric := range metrics.CLusterMetrics {
 		K8sClusterMetrics[clusterKey] = clusterMetric
+	}
+
+	for key, metric := range metrics.TelegrafIpmiMetrics {
+		TelegrafIpmiMetrics[key] = metric
 	}
 
 }
