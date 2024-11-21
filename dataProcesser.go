@@ -139,7 +139,6 @@ func IpmiMetricsPreHandler(labels map[string]string) bool {
 
 	if MetricName, MetricsExist := TelegrafIpmiMetrics[metricName]; MetricsExist {
 		labels["__name__"] = MetricName
-		labels["bk_obj_id"] = IPMI
 		return true
 	}
 
