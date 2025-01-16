@@ -15,9 +15,9 @@ import (
 func handleSpecialValue(value float64) float64 {
 	switch {
 	case math.IsInf(value, -1), math.IsNaN(value):
-		return 0
+		return 10000
 	case math.IsInf(value, 1):
-		return -1
+		return -10000
 	default:
 		return value
 	}
