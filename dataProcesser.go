@@ -12,14 +12,16 @@ import (
 )
 
 // handleSpecialValue 处理+Inf、-Inf、NaN特殊值
-func handleSpecialValue(value float64) float64 {
+func handleSpecialValue(sample prompb.Sample) float64 {
 	switch {
-	case math.IsInf(value, -1), math.IsNaN(value):
+	case math.IsInf(sample.Value, -1), math.IsNaN(sample.Value):
+		logrus.Debugf("Handle special value -Inf or NaN, sample info: %v", sample)
 		return 0
-	case math.IsInf(value, 1):
+	case math.IsInf(sample.Value, 1):
+		logrus.Debugf("Handle special value Inf, sample info: %v", sample)
 		return -1
 	default:
-		return value
+		return sample.Value
 	}
 }
 
@@ -28,7 +30,7 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 	var handleData interface{}
 
 	if bkSource {
-		strVal := fmt.Sprintf("%.2f", handleSpecialValue(sample.Value))
+		strVal := fmt.Sprintf("%.2f", handleSpecialValue(sample))
 		metricsValue, _ := strconv.ParseFloat(strVal, 64)
 
 		// 检查并断言 dimensions["bk_biz_id"]
@@ -87,7 +89,7 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 				{
 					Dimension: dimensions,
 					Metrics: map[string]float64{
-						metricName: handleSpecialValue(sample.Value),
+						metricName: handleSpecialValue(sample),
 					},
 					Timestamp: timestamp,
 				},
