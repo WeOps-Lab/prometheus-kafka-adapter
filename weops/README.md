@@ -104,3 +104,6 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 
 #### v1.1.4
 - 修复ipmi指标obj id不正确问题
+
+#### v1.1.5
+- 修复ipmi指标obj id不正确问题
