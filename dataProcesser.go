@@ -12,16 +12,14 @@ import (
 )
 
 // handleSpecialValue 处理+Inf、-Inf、NaN特殊值
-func handleSpecialValue(sample prompb.Sample) float64 {
+func handleSpecialValue(sample prompb.Sample) (float64, bool) {
 	switch {
 	case math.IsInf(sample.Value, -1), math.IsNaN(sample.Value):
-		logrus.Debugf("Handle special value -Inf or NaN, sample info: %v", sample)
-		return 0
+		return 0, true
 	case math.IsInf(sample.Value, 1):
-		logrus.Debugf("Handle special value Inf, sample info: %v", sample)
-		return -1
+		return -1, true
 	default:
-		return sample.Value
+		return sample.Value, false
 	}
 }
 
@@ -29,8 +27,14 @@ func handleSpecialValue(sample prompb.Sample) float64 {
 func formatMetricsData(metricName string, dimensions map[string]interface{}, sample prompb.Sample, bkSource bool) (data []byte, err error) {
 	var handleData interface{}
 
+	// prometheus中的特殊值处理 +-Inf、Nan
+	value, specialValue := handleSpecialValue(sample)
+	if specialValue {
+		logrus.Debugf("Handle special value (+-Inf or NaN), metric name: %v, dimensions: %v, sample info: %v", metricName, dimensions, sample)
+	}
+
 	if bkSource {
-		strVal := fmt.Sprintf("%.2f", handleSpecialValue(sample))
+		strVal := fmt.Sprintf("%.2f", value)
 		metricsValue, _ := strconv.ParseFloat(strVal, 64)
 
 		// 检查并断言 dimensions["bk_biz_id"]
@@ -89,7 +93,7 @@ func formatMetricsData(metricName string, dimensions map[string]interface{}, sam
 				{
 					Dimension: dimensions,
 					Metrics: map[string]float64{
-						metricName: handleSpecialValue(sample),
+						metricName: value,
 					},
 					Timestamp: timestamp,
 				},
