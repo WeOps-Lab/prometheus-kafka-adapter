@@ -26,7 +26,11 @@ func (h *K8sPodHandler) ValidateDimensions(dimensions map[string]interface{}) bo
 }
 
 func (h *K8sPodHandler) ProcessDimensions(dimensions map[string]interface{}) bool {
-	bkInstId := getBkInstId(K8sPodObjectId, dimensions["instance_name"].(string))
+	instanceName, ok := dimensions["instance_name"].(string)
+	if !ok || instanceName == "" {
+		return false
+	}
+	bkInstId := getBkInstId(K8sPodObjectId, instanceName)
 	if bkInstId == 0 {
 		return false
 	}
