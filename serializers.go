@@ -17,12 +17,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"fmt"
+	"io/ioutil"
+
 	"github.com/linkedin/goavro"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
 )
 
 // Serializer represents an abstract metrics serializer
@@ -176,21 +175,4 @@ func filter(name string, labels map[string]string) bool {
 		}
 	}
 	return false
-}
-
-// shouldProcess 判断是否需要处理该指标
-func shouldProcess(labels map[string]string) bool {
-	return (labels[Protocol] == Kubernetes && k8sMetricsPreHandler(labels)) || labels[Protocol] == SNMP || labels[Protocol] == IPMI && IpmiMetricsPreHandler(labels) || labels[Source] == Automate || labels[Protocol] == Vector
-}
-
-// getTopic 提取topic并删除无用的维度信息
-func getTopic(dimensions map[string]interface{}) (string, error) {
-	if dataID, ok := dimensions["bk_data_id"].(string); ok && dataID != "" {
-		t := fmt.Sprintf("0bkmonitor_%v0", dataID)
-		for _, key := range []string{"bk_data_id", "job"} {
-			delete(dimensions, key)
-		}
-		return t, nil
-	}
-	return "", errors.New("dataID is empty or not found")
 }
