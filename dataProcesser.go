@@ -3,102 +3,103 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+	"github.com/sirupsen/logrus"
 	"strconv"
 	"time"
 
 	"github.com/prometheus/prometheus/prompb"
 )
 
-// handleSpecialValue 处理+Inf、-Inf、NaN特殊值
-func handleSpecialValue(sample prompb.Sample) (float64, bool) {
-	switch {
-	case math.IsInf(sample.Value, -1), math.IsNaN(sample.Value):
-		return 0, true
-	case math.IsInf(sample.Value, 1):
-		return -1, true
-	default:
-		return sample.Value, false
-	}
-}
-
 // formatMetricsData 标准化输出数据
-func formatMetricsData(metricName string, dimensions map[string]interface{}, sample prompb.Sample, bkSource bool) (data []byte, err error) {
-	var handleData interface{}
-
-	// prometheus中的特殊值处理 +-Inf、Nan
-	value, specialValue := handleSpecialValue(sample)
-	if specialValue {
-		logrus.Debugf("Handle special value (+-Inf or NaN), metric name: %v, dimensions: %v, sample info: %v", metricName, dimensions, sample)
+func formatMetricsData(metricName string, dimensions map[string]interface{}, sample prompb.Sample, bkSource bool) ([]byte, error) {
+	// 检查特殊值
+	if hasSpecialValue(metricName, sample, dimensions) {
+		return nil, nil
 	}
 
 	if bkSource {
-		strVal := fmt.Sprintf("%.2f", value)
-		metricsValue, _ := strconv.ParseFloat(strVal, 64)
+		return formatBKMetrics(metricName, dimensions, sample)
+	}
+	return formatStandardMetrics(metricName, dimensions, sample)
+}
 
-		// 检查并断言 dimensions["bk_biz_id"]
-		bkBizIdStr, ok := dimensions["bk_biz_id"].(string)
-		if !ok {
-			return nil, fmt.Errorf("bk_biz_id is not a string or is missing")
-		}
-		bkBizId, err := strconv.Atoi(bkBizIdStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert bk_biz_id to int: %v", err)
-		}
-
-		// 检查并断言 dimensions["bk_cloud_id"]
-		bkCloudIdStr, ok := dimensions["bk_cloud_id"].(string)
-		if !ok {
-			return nil, fmt.Errorf("bk_cloud_id is not a string or is missing")
-		}
-		bkCloudId, err := strconv.Atoi(bkCloudIdStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert bk_cloud_id to int: %v", err)
-		}
-
-		handleData = BKMetricsData{
-			Timestamp: time.Unix(sample.Timestamp/1000, (sample.Timestamp%1000)*int64(time.Millisecond)),
-			BkBizId:   bkBizId,
-			BkCloudId: bkCloudId,
-			GroupInfo: GroupInfo{
-				{
-					BkCollectConfigId: dimensions["bk_collect_config_id"].(string),
-				},
-			},
-			Prometheus: Prometheus{
-				Collector: Collector{
-					Metrics: Metrics{
-						{
-							Key:       metricName,
-							Labels:    dimensions,
-							Timestamp: time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Second),
-							Value:     metricsValue,
-						},
-					},
-				},
-			},
-			Service: "prometheus",
-			Type:    "metricbeat",
-		}
-	} else {
-		var timestamp int64
-		timestamp = time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
-		handleData = MetricsData{
-			Data: []struct {
-				Dimension map[string]interface{} `json:"dimension"`
-				Metrics   map[string]float64     `json:"metrics"`
-				Timestamp int64                  `json:"timestamp"`
-			}{
-				{
-					Dimension: dimensions,
-					Metrics: map[string]float64{
-						metricName: value,
-					},
-					Timestamp: timestamp,
-				},
-			},
-		}
+// formatBKMetrics 处理蓝鲸源数据格式
+func formatBKMetrics(metricName string, dimensions map[string]interface{}, sample prompb.Sample) ([]byte, error) {
+	// 获取并验证必要字段
+	bkBizId, err := getIntField(dimensions, "bk_biz_id")
+	if err != nil {
+		logrus.Debugf("bk_biz_id is not a string or is missing")
+		return nil, nil
 	}
 
-	return json.Marshal(handleData)
+	bkCloudId, err := getIntField(dimensions, "bk_cloud_id")
+	if err != nil {
+		logrus.Debugf("bk_cloud_id is not a string or is missing")
+		return nil, nil
+	}
+
+	configId, ok := dimensions["bk_collect_config_id"].(string)
+	if !ok {
+		logrus.Debugf("bk_collect_config_id is not a string or is missing")
+		return nil, nil
+	}
+
+	// 格式化数值
+	value, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", sample.Value), 64)
+	timestamp := time.Unix(sample.Timestamp/1000, 0).UTC()
+
+	data := BKMetricsData{
+		Timestamp: time.Unix(sample.Timestamp/1000, (sample.Timestamp%1000)*int64(time.Millisecond)),
+		BkBizId:   bkBizId,
+		BkCloudId: bkCloudId,
+		GroupInfo: GroupInfo{{BkCollectConfigId: configId}},
+		Prometheus: Prometheus{
+			Collector: Collector{
+				Metrics: Metrics{{
+					Key:       metricName,
+					Labels:    dimensions,
+					Timestamp: timestamp.UnixNano() / int64(time.Second),
+					Value:     value,
+				}},
+			},
+		},
+		Service: "prometheus",
+		Type:    "metricbeat",
+	}
+
+	return json.Marshal(data)
+}
+
+// formatStandardMetrics 处理标准数据格式
+func formatStandardMetrics(metricName string, dimensions map[string]interface{}, sample prompb.Sample) ([]byte, error) {
+	timestamp := time.Unix(sample.Timestamp/1000, 0).UTC().UnixNano() / int64(time.Millisecond)
+
+	data := MetricsData{
+		Data: []struct {
+			Dimension map[string]interface{} `json:"dimension"`
+			Metrics   map[string]float64     `json:"metrics"`
+			Timestamp int64                  `json:"timestamp"`
+		}{{
+			Dimension: dimensions,
+			Metrics:   map[string]float64{metricName: sample.Value},
+			Timestamp: timestamp,
+		}},
+	}
+
+	return json.Marshal(data)
+}
+
+// getIntField 从dimensions中获取并转换整数字段
+func getIntField(dimensions map[string]interface{}, key string) (int, error) {
+	val, ok := dimensions[key].(string)
+	if !ok {
+		return 0, fmt.Errorf("field %s not found or not a string", key)
+	}
+
+	intVal, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert %s to int: %v", key, err)
+	}
+
+	return intVal, nil
 }

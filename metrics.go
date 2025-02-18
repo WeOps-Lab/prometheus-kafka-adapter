@@ -109,6 +109,13 @@ var (
 		},
 		[]string{"bk_obj_id", "api_type"},
 	)
+	weopsSpecialValueDropped = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "weops_special_value_dropped",
+			Help: "Count of drop special value",
+		},
+		[]string{"metric_name", "value_type", "instance_name"},
+	)
 )
 
 func init() {
