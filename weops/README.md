@@ -77,7 +77,6 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 - 修复weops部署后才可部署adapter的问题
 - 优化日志
 
-
 #### v1.0.5
 - 优化日志，k8s部分排查
 
@@ -107,3 +106,7 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 
 #### v1.1.5
 - 修复ipmi指标obj id不正确问题
+
+#### v1.2.0
+- 过滤prometheus特殊值-Inf、+Inf、NaN
+- 简化链路处理逻辑
