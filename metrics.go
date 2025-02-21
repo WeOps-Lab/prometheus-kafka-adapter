@@ -134,4 +134,5 @@ func init() {
 	prometheus.MustRegister(weopsGetDataIdFailTotal)
 	prometheus.MustRegister(getCMDBInfoFailTotal)
 	prometheus.MustRegister(weopsObjGetDataIdFailTotal)
+	prometheus.MustRegister(weopsSpecialValueDropped)
 }

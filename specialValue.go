@@ -31,5 +31,5 @@ func logSpecialValue(metricName, valueType string, sample prompb.Sample, dimensi
 
 	logrus.Debugf("Dropping metric due to special value: metric=%s, value_type=%s, value=%v, timestamp=%v, instance=%s, dimensions=%s",
 		metricName, valueType, sample.Value, sample.Timestamp, instanceName, dimensionsStr)
-	weopsSpecialValueDropped.WithLabelValues(metricName, valueType, instanceName).Inc()
+	weopsSpecialValueDropped.WithLabelValues(metricName, valueType, instanceName).Add(float64(1))
 }
