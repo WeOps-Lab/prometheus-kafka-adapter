@@ -53,6 +53,7 @@ var k8sPodDimension = map[string]bool{
 	"bk_inst_id":    true,
 	"bk_obj_id":     true,
 	"cluster":       true,
+	"cluster_name":  true,
 	"instance_name": true,
 	"namespace_id":  true,
 	"node_id":       true,
@@ -97,6 +98,7 @@ var k8sNodeDimension = map[string]bool{
 	"bk_inst_id":    true,
 	"bk_obj_id":     true,
 	"cluster":       true,
+	"cluster_name":  true,
 	"instance_name": true,
 	"node_id":       true,
 }
