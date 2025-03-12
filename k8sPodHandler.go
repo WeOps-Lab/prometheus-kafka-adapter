@@ -12,6 +12,7 @@ func (h *K8sPodHandler) Handle(labels map[string]string) bool {
 		}
 		labels["__name__"] = podMetricName
 		labels["bk_obj_id"] = K8sPodObjectId
+		labels["instance_name"] = labels["uid"]
 		return true
 	}
 	return false
