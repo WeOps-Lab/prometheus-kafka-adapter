@@ -110,3 +110,7 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 #### v1.2.0
 - 过滤prometheus特殊值-Inf、+Inf、NaN
 - 简化链路处理逻辑
+
+#### v1.2.1
+- 为k8s pod、node指标保留cluster_name维度
+- 修复pod指标缺失instance_name、cluster_name维度
