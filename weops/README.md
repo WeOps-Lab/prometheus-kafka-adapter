@@ -114,3 +114,7 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 #### v1.2.1
 - 为k8s pod、node指标保留cluster_name维度
 - 修复pod指标缺失instance_name、cluster_name维度
+
+#### v1.2.2
+- 修复vmware、云类采集指标被过滤的问题
+- 兼容protocol=cloud protocol=automate
