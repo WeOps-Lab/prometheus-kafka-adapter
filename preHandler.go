@@ -23,7 +23,8 @@ var protocolProcessors = map[string]func(labels map[string]string) bool{
 	SNMP:     func(labels map[string]string) bool { return true },
 	IPMI:     func(labels map[string]string) bool { return protocolHandlers[IPMI].Handle(labels) },
 	Vector:   func(labels map[string]string) bool { return true },
-	Automate: func(labels map[string]string) bool { return labels[Source] == Automate },
+	Automate: func(labels map[string]string) bool { return true },
+	CLOUD:    func(labels map[string]string) bool { return true },
 }
 
 // shouldProcess 判断是否需要处理该指标

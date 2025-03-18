@@ -13,4 +13,6 @@ var protocolHandlers = map[string]ProtocolHandler{
 	K8sNodeObjectId:    &K8sNodeHandler{},
 	IPMI:               &IpmiHandler{},
 	SNMP:               &SNMPHandler{},
+	Automate:           &AutomateHandler{},
+	CLOUD:              &AutomateHandler{},
 }
