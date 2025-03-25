@@ -118,3 +118,6 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 #### v1.2.2
 - 修复vmware、云类采集指标被过滤的问题
 - 兼容protocol=cloud protocol=automate
+
+#### v1.2.3
+- 适配k8s node实例名修改
