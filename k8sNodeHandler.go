@@ -12,7 +12,7 @@ func (h *K8sNodeHandler) Handle(labels map[string]string) bool {
 		}
 		labels["__name__"] = nodeMetricName
 		labels["bk_obj_id"] = K8sNodeObjectId
-		labels["instance_name"] = labels["node"]
+		labels["instance_name"] = fmt.Sprintf("%s(%s)", labels["node"], labels["cluster"])
 		labels["cluster_name"] = labels["cluster"]
 		return true
 	}
