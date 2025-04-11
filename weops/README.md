@@ -121,3 +121,6 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 
 #### v1.2.3
 - 适配k8s node实例名修改
+
+#### v1.2.4
+- node、pod监控指标适配k8s node实例名修改
