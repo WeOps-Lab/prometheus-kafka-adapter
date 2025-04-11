@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/sirupsen/logrus"
+)
 
 type K8sPodHandler struct{}
 
@@ -41,8 +44,10 @@ func (h *K8sPodHandler) ProcessDimensions(dimensions map[string]interface{}) boo
 	dimensions["bk_inst_id"] = bkInstId
 
 	// 处理集群ID
-	clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster_name"].(string))
+	clusterName := dimensions["cluster"].(string)
+	clusterId := getBkInstId(K8sClusterObjectId, clusterName)
 	if clusterId == 0 {
+		logrus.Debugf("K8sPodHandler ProcessDimensions clusterId is 0, cluster_name: %s", clusterName)
 		return false
 	}
 	dimensions["cluster"] = clusterId
@@ -55,10 +60,11 @@ func (h *K8sPodHandler) ProcessDimensions(dimensions map[string]interface{}) boo
 	}
 
 	// 处理节点ID
-	if node, ok := dimensions["node"].(string); ok {
-		if nodeId := getBkInstId(K8sNodeObjectId, node); nodeId != 0 {
+	if node, nodeExist := dimensions["node"].(string); nodeExist {
+		if nodeId := getBkInstId(K8sNodeObjectId, fmt.Sprintf("%s(%s)", node, clusterName)); nodeId != 0 {
 			dimensions["node_id"] = nodeId
 		} else {
+			logrus.Debugf("K8sPodHandler ProcessDimensions can not find bk_node(bk_inst_id), node: %s, cluster_name: %s", node, clusterName)
 			return false
 		}
 	}

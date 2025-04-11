@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/sirupsen/logrus"
+)
 
 type K8sNodeHandler struct{}
 
@@ -28,14 +31,22 @@ func (h *K8sNodeHandler) ValidateDimensions(dimensions map[string]interface{}) b
 }
 
 func (h *K8sNodeHandler) ProcessDimensions(dimensions map[string]interface{}) bool {
-	clusterId := getBkInstId(K8sClusterObjectId, dimensions["cluster"].(string))
+	clusterName := dimensions["cluster"].(string)
+	clusterId := getBkInstId(K8sClusterObjectId, clusterName)
 	if clusterId == 0 {
+		logrus.Debugf("K8sNodeHandler ProcessDimensions clusterId is 0, cluster_name: %s", clusterName)
 		return false
 	}
 	dimensions["cluster"] = clusterId
 
-	if node, ok := dimensions["node"].(string); ok {
-		dimensions["node_id"] = getBkInstId(K8sNodeObjectId, node)
+	// 处理节点ID
+	if node, nodeExist := dimensions["node"].(string); nodeExist {
+		if nodeId := getBkInstId(K8sNodeObjectId, fmt.Sprintf("%s(%s)", node, clusterName)); nodeId != 0 {
+			dimensions["node_id"] = nodeId
+		} else {
+			logrus.Debugf("K8sNodeHandler ProcessDimensions can not find bk_node(bk_inst_id), node: %s, cluster_name: %s", node, clusterName)
+			return false
+		}
 	}
 
 	if bizInfo, bizFound := bkSetBizCache.Get(fmt.Sprintf("%v_set_id_biz_id", K8sClusterObjectId)); bizFound {
