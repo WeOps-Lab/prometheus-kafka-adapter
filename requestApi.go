@@ -113,7 +113,7 @@ func getObjInstResp(start int, bkObjId string) (bkInstInfo instInfoResponse) {
 			"bk_username": "admin",
 			"bk_obj_id": "%v",
 			"fields": {
-				"bk_switch": [
+				"%v": [
 					"bk_inst_id",
 					"bk_inst_name",
 					"bk_obj_id"
@@ -124,7 +124,7 @@ func getObjInstResp(start int, bkObjId string) (bkInstInfo instInfoResponse) {
 				"limit": 200,
 				"sort": "bk_inst_id"
 			}
-		}`, bkAppWeopsId, bkAppSecret, bkObjId, start))
+		}`, bkAppWeopsId, bkAppSecret, bkObjId, bkObjId, start))
 
 	instResponse, err := cmdbPostApi(bkObjId, searchInst, payload)
 	if err != nil {
