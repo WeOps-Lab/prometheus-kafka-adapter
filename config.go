@@ -16,18 +16,19 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/patrickmn/go-cache"
-	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/expfmt"
-	"github.com/robfig/cron/v3"
-	"gopkg.in/yaml.v2"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"text/template"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/patrickmn/go-cache"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/robfig/cron/v3"
+	"gopkg.in/yaml.v2"
 
 	"github.com/sirupsen/logrus"
 )
@@ -62,6 +63,7 @@ var (
 	cacheExpiration        = int64(300)
 	apiFailExpiration      = int64(10)
 	logSkipReceive         = false
+	pprofEnabled           = false
 	mutex                  = sync.Mutex{}
 	metricsFilePath        = "metrics.yaml"
 	setIdBizIdMap          = make(map[int]int)
@@ -194,6 +196,14 @@ func init() {
 	// 缓存时长
 	if value := os.Getenv("LOG_SKIP_RECEIVE"); value == "True" {
 		logSkipReceive = true
+	}
+
+	// pprof开关配置
+	if value := os.Getenv("PPROF_ENABLED"); value == "True" {
+		pprofEnabled = true
+		logrus.Infof("pprof enabled on startup: PPROF_ENABLED=%s", value)
+	} else {
+		logrus.Infof("pprof disabled on startup: PPROF_ENABLED=%s", value)
 	}
 
 	parseMetricsFile(metricsFilePath)
