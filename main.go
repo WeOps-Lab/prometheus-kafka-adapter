@@ -15,13 +15,74 @@
 package main
 
 import (
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 )
 
+// setupPprofRoutes 设置pprof路由，根据pprofEnabled状态决定是否启用
+func setupPprofRoutes(r *gin.Engine) {
+	// pprof middleware - 检查是否启用
+	pprofMiddleware := func() gin.HandlerFunc {
+		return func(c *gin.Context) {
+			if !pprofEnabled {
+				c.JSON(http.StatusForbidden, gin.H{"error": "pprof is disabled"})
+				c.Abort()
+				return
+			}
+			c.Next()
+		}
+	}
+
+	// pprof路由组
+	pprofGroup := r.Group("/debug/pprof")
+	pprofGroup.Use(pprofMiddleware())
+	{
+		pprofGroup.GET("/", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/debug/pprof/", http.StatusMovedPermanently)
+		})))
+		pprofGroup.GET("/cmdline", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/profile", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.POST("/symbol", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/symbol", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/trace", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/allocs", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/block", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/goroutine", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/heap", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/mutex", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+		pprofGroup.GET("/threadcreate", gin.WrapH(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.DefaultServeMux.ServeHTTP(w, r)
+		})))
+	}
+}
+
 func main() {
+
 	logrus.Info("creating kafka producer")
 
 	kafkaConfig := kafka.ConfigMap{
@@ -79,6 +140,27 @@ func main() {
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	r.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "UP"}) })
+
+	// pprof 路由 - 根据配置决定是否启用
+	setupPprofRoutes(r)
+
+	// pprof 控制接口
+	r.POST("/pprof/enable", func(c *gin.Context) {
+		pprofEnabled = true
+		logrus.Info("pprof enabled")
+		c.JSON(200, gin.H{"status": "pprof enabled", "enabled": pprofEnabled})
+	})
+
+	r.POST("/pprof/disable", func(c *gin.Context) {
+		pprofEnabled = false
+		logrus.Info("pprof disabled")
+		c.JSON(200, gin.H{"status": "pprof disabled", "enabled": pprofEnabled})
+	})
+
+	r.GET("/pprof/status", func(c *gin.Context) {
+		c.JSON(200, gin.H{"enabled": pprofEnabled})
+	})
+
 	if basicauth {
 		authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
 			basicauthUsername: basicauthPassword,

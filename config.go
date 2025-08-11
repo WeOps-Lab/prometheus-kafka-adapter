@@ -16,18 +16,19 @@ package main
 
 import (
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/patrickmn/go-cache"
-	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/expfmt"
-	"github.com/robfig/cron/v3"
-	"gopkg.in/yaml.v2"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"text/template"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/patrickmn/go-cache"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/robfig/cron/v3"
+	"gopkg.in/yaml.v2"
 
 	"github.com/sirupsen/logrus"
 )
@@ -62,6 +63,7 @@ var (
 	cacheExpiration        = int64(300)
 	apiFailExpiration      = int64(10)
 	logSkipReceive         = false
+	pprofEnabled           = false
 	mutex                  = sync.Mutex{}
 	metricsFilePath        = "metrics.yaml"
 	setIdBizIdMap          = make(map[int]int)
@@ -196,7 +198,15 @@ func init() {
 		logSkipReceive = true
 	}
 
-	parseK8sMetricsFile(metricsFilePath)
+	// pprof开关配置
+	if value := os.Getenv("PPROF_ENABLED"); value == "True" {
+		pprofEnabled = true
+		logrus.Infof("pprof enabled on startup: PPROF_ENABLED=%s", value)
+	} else {
+		logrus.Infof("pprof disabled on startup: PPROF_ENABLED=%s", value)
+	}
+
+	parseMetricsFile(metricsFilePath)
 
 	//初始化获取cmdb全量信息
 	setUpCmdbInfo()
@@ -276,8 +286,8 @@ func parseTopicTemplate(tpl string) (*template.Template, error) {
 	return template.New("topic").Funcs(funcMap).Parse(tpl)
 }
 
-// parseK8sMetricsFile 加载k8s指标
-func parseK8sMetricsFile(filePath string) {
+// parseMetricsFile 加载固定指标项(k8s、telegraf ipmi)
+func parseMetricsFile(filePath string) {
 	yamlFile, err := os.ReadFile(filePath)
 	if err != nil {
 		logrus.Errorf("Failed to read %v: %v", filePath, err)
