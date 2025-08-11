@@ -15,8 +15,8 @@ prometheus向adapter写入监控指标，adapter将指标清洗，送入蓝鲸�
 - `BASIC_AUTH_PASSWORD`：用于接收端点的基本身份验证密码，默认为无基本身份验证。
 - `LOG_LEVEL`：为 [`logrus`](https://github.com/sirupsen/logrus) 定义日志级别，可以是 `debug`、`info`、`warn`、`error`、`fatal` 或 `panic`，默认为 `info`。
 - `GIN_MODE`：管理 [gin](https://github.com/gin-gonic/gin) 调试日志记录，可以是 `debug` 或 `release`。
-- `LOG_SKIP_RECEIVE`: 填`True`则不现实/receive请求部分的日志。
-- `PPROF_ENABLED`: 启动时启用pprof性能分析，可设置为`true`或`false`，默认为`false`。
+- `LOG_SKIP_RECEIVE`: 填`True`则不打印/receive请求部分的日志。
+- `PPROF_ENABLED`: 启动时启用pprof性能分析，填`True`则开启，默认不开启。
 
 ### pprof性能分析
 
@@ -25,7 +25,7 @@ Weops-kafka-adapter内置了Go的pprof性能分析工具，可以通过HTTP接�
 #### 控制接口
 
 - `POST /pprof/enable` - 启用pprof性能分析
-- `POST /pprof/disable` - 禁用pprof性能分析  
+- `POST /pprof/disable` - 禁用pprof性能分析
 - `GET /pprof/status` - 查看当前pprof状态
 
 #### 分析接口（启用后可用）
