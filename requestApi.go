@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -277,9 +278,8 @@ func cmdbPostApi(bkObjId, apiName string, payload *strings.Reader) ([]byte, erro
 	// get fail time from cache, if fail time > 1, do not postHttpRequest
 	if fail, found := bkCache.Get("http_post_fail"); found {
 		if fail.(int) > 1 {
-			logrus.Errorf("get info from CMDB fail more than one time, do not send http post")
 			getCMDBInfoFailTotal.WithLabelValues(bkObjId, apiName).Add(float64(1))
-			return nil, nil
+			return nil, fmt.Errorf("[cmdbPostApi] Failed to get CMDB info more than once, stop sending HTTP POST. Please check CMDB service status. bkObjId: %s, apiName: %s", bkObjId, apiName)
 		}
 	}
 
