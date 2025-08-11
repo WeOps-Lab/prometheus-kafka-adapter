@@ -16,6 +16,51 @@ prometheus向adapter写入监控指标，adapter将指标清洗，送入蓝鲸�
 - `LOG_LEVEL`：为 [`logrus`](https://github.com/sirupsen/logrus) 定义日志级别，可以是 `debug`、`info`、`warn`、`error`、`fatal` 或 `panic`，默认为 `info`。
 - `GIN_MODE`：管理 [gin](https://github.com/gin-gonic/gin) 调试日志记录，可以是 `debug` 或 `release`。
 - `LOG_SKIP_RECEIVE`: 填`True`则不现实/receive请求部分的日志。
+- `PPROF_ENABLED`: 启动时启用pprof性能分析，可设置为`true`或`false`，默认为`false`。
+
+### pprof性能分析
+
+Weops-kafka-adapter内置了Go的pprof性能分析工具，可以通过HTTP接口动态控制开启和关闭：
+
+#### 控制接口
+
+- `POST /pprof/enable` - 启用pprof性能分析
+- `POST /pprof/disable` - 禁用pprof性能分析  
+- `GET /pprof/status` - 查看当前pprof状态
+
+#### 分析接口（启用后可用）
+
+- `GET /debug/pprof/` - 性能分析首页
+- `GET /debug/pprof/profile` - CPU性能分析
+- `GET /debug/pprof/heap` - 堆内存分析
+- `GET /debug/pprof/goroutine` - 协程分析
+- `GET /debug/pprof/allocs` - 内存分配分析
+- `GET /debug/pprof/block` - 阻塞分析
+- `GET /debug/pprof/mutex` - 互斥锁分析
+
+#### 使用示例
+
+```bash
+# 启用性能分析
+curl -X POST http://localhost:8080/pprof/enable
+
+# 查看状态
+curl http://localhost:8080/pprof/status
+
+# 获取CPU性能分析（30秒）
+curl http://localhost:8080/debug/pprof/profile?seconds=30 -o profile.pprof
+
+# 使用go tool分析
+go tool pprof profile.pprof
+
+# 或直接从URL分析
+go tool pprof http://localhost:8080/debug/pprof/profile
+
+# 分析完成后禁用
+curl -X POST http://localhost:8080/pprof/disable
+```
+
+**安全提醒**：pprof默认处于禁用状态，仅在需要调试性能问题时临时启用，因为它可能暴露运行时敏感信息。
 
 Weops环境变量配置:
 - `BKAPP_PAAS_HOST`: 蓝鲸Paas访问地址，默认为 `http://paas.weops.com`。
@@ -124,3 +169,7 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 
 #### v1.2.4
 - node、pod监控指标适配k8s node实例名修改
+
+#### v1.2.5
+- json解析cmdb响应内容优化
+- 新增pprof
