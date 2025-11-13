@@ -3,6 +3,7 @@ K8sPodMetrics:
   container_cpu_utilization: container_cpu_utilization
   pod_memory_usage: pod_memory_usage
   container_memory_usage_bytes: container_memory_usage
+  container_memory_working_set_bytes: container_memory_working_set_bytes
   pod_memory_utilization: pod_memory_utilization
   container_memory_utilization: container_memory_utilization
   pod_network_receive: pod_network_receive
