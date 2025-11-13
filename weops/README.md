@@ -173,3 +173,7 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 #### v1.2.5
 - json解析cmdb响应内容优化
 - 新增pprof
+
+#### v1.2.6
+- 新增 `container_memory_working_set_bytes` 指标，提高容器内存监控准确性
+- 修复容器内存使用量和使用率计算不准确的问题
