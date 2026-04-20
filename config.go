@@ -34,40 +34,43 @@ import (
 )
 
 var (
-	bkAppWeopsId           = "weops_saas"
-	bkAppSecret            = ""
-	bkAppPaasHost          = "http://paas.service.consul"
-	kafkaBrokerList        = "kafka:9092"
-	kafkaTopic             = "metrics"
-	topicTemplate          *template.Template
-	match                  = make(map[string]*dto.MetricFamily, 0)
-	basicauth              = false
-	basicauthUsername      = ""
-	basicauthPassword      = ""
-	kafkaCompression       = "none"
-	kafkaBatchNumMessages  = "10000"
-	kafkaSslClientCertFile = ""
-	kafkaSslClientKeyFile  = ""
-	kafkaSslClientKeyPass  = ""
-	kafkaSslCACertFile     = ""
-	kafkaSecurityProtocol  = ""
-	kafkaSaslMechanism     = ""
-	kafkaSaslUsername      = ""
-	kafkaSaslPassword      = ""
-	serializer             Serializer
-	bkCache                *cache.Cache
-	bkObjRelaCache         *cache.Cache
-	bkInstCache            *cache.Cache
-	bkSetBizCache          *cache.Cache
-	bkObjSetCache          *cache.Cache
-	cacheExpiration        = int64(300)
-	apiFailExpiration      = int64(10)
-	logSkipReceive         = false
-	pprofEnabled           = false
-	mutex                  = sync.Mutex{}
-	metricsFilePath        = "metrics.yaml"
-	setIdBizIdMap          = make(map[int]int)
-	c                      = cron.New()
+	bkAppWeopsId               = "weops_saas"
+	bkAppSecret                = ""
+	bkAppPaasHost              = "http://paas.service.consul"
+	kafkaBrokerList            = "kafka:9092"
+	kafkaTopic                 = "metrics"
+	topicTemplate              *template.Template
+	match                      = make(map[string]*dto.MetricFamily, 0)
+	basicauth                  = false
+	basicauthUsername          = ""
+	basicauthPassword          = ""
+	kafkaCompression           = "none"
+	kafkaBatchNumMessages      = "10000"
+	kafkaSslClientCertFile     = ""
+	kafkaSslClientKeyFile      = ""
+	kafkaSslClientKeyPass      = ""
+	kafkaSslCACertFile         = ""
+	kafkaSecurityProtocol      = ""
+	kafkaSaslMechanism         = ""
+	kafkaSaslUsername          = ""
+	kafkaSaslPassword          = ""
+	kafkaQueueMaxMessages      = 100000
+	kafkaQueueMaxKbytes        = 1048576
+	kafkaBackpressureThreshold = 0.8
+	serializer                 Serializer
+	bkCache                    *cache.Cache
+	bkObjRelaCache             *cache.Cache
+	bkInstCache                *cache.Cache
+	bkSetBizCache              *cache.Cache
+	bkObjSetCache              *cache.Cache
+	cacheExpiration            = int64(300)
+	apiFailExpiration          = int64(10)
+	logSkipReceive             = false
+	pprofEnabled               = false
+	mutex                      = sync.Mutex{}
+	metricsFilePath            = "metrics.yaml"
+	setIdBizIdMap              = make(map[int]int)
+	c                          = cron.New()
 )
 
 func init() {
@@ -151,6 +154,33 @@ func init() {
 
 	if value := os.Getenv("KAFKA_SASL_PASSWORD"); value != "" {
 		kafkaSaslPassword = value
+	}
+
+	if value := os.Getenv("KAFKA_QUEUE_MAX_MESSAGES"); value != "" {
+		intValue, err := strconv.Atoi(value)
+		if err != nil {
+			logrus.WithError(err).Fatalln("parse KAFKA_QUEUE_MAX_MESSAGES error")
+		}
+		kafkaQueueMaxMessages = intValue
+	}
+
+	if value := os.Getenv("KAFKA_QUEUE_MAX_KBYTES"); value != "" {
+		intValue, err := strconv.Atoi(value)
+		if err != nil {
+			logrus.WithError(err).Fatalln("parse KAFKA_QUEUE_MAX_KBYTES error")
+		}
+		kafkaQueueMaxKbytes = intValue
+	}
+
+	if value := os.Getenv("KAFKA_BACKPRESSURE_THRESHOLD"); value != "" {
+		floatValue, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			logrus.WithError(err).Fatalln("parse KAFKA_BACKPRESSURE_THRESHOLD error")
+		}
+		if floatValue <= 0 || floatValue > 1 {
+			logrus.Fatalln("KAFKA_BACKPRESSURE_THRESHOLD must be between 0 and 1")
+		}
+		kafkaBackpressureThreshold = floatValue
 	}
 
 	if value := os.Getenv("MATCH"); value != "" {

@@ -34,6 +34,17 @@ func receiveHandler(producer *kafka.Producer, serializer Serializer) func(c *gin
 
 		httpRequestsTotal.Add(float64(1))
 
+		queueDepth := producer.Len()
+		kafkaQueueDepth.Set(float64(queueDepth))
+
+		threshold := int(float64(kafkaQueueMaxMessages) * kafkaBackpressureThreshold)
+		if queueDepth > threshold {
+			kafkaBackpressureTotal.Inc()
+			c.AbortWithStatus(http.StatusServiceUnavailable)
+			logrus.Warnf("backpressure: queue depth %d exceeds threshold %d", queueDepth, threshold)
+			return
+		}
+
 		compressed, err := ioutil.ReadAll(c.Request.Body)
 		if err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)

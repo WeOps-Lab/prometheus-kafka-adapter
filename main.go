@@ -86,11 +86,13 @@ func main() {
 	logrus.Info("creating kafka producer")
 
 	kafkaConfig := kafka.ConfigMap{
-		"bootstrap.servers":   kafkaBrokerList,
-		"compression.codec":   kafkaCompression,
-		"batch.num.messages":  kafkaBatchNumMessages,
-		"go.batch.producer":   true,  // Enable batch producer (for increased performance).
-		"go.delivery.reports": false, // per-message delivery reports to the Events() channel
+		"bootstrap.servers":            kafkaBrokerList,
+		"compression.codec":            kafkaCompression,
+		"batch.num.messages":           kafkaBatchNumMessages,
+		"go.batch.producer":            true,
+		"go.delivery.reports":          true,
+		"queue.buffering.max.messages": kafkaQueueMaxMessages,
+		"queue.buffering.max.kbytes":   kafkaQueueMaxKbytes,
 	}
 
 	if kafkaSslClientCertFile != "" && kafkaSslClientKeyFile != "" && kafkaSslCACertFile != "" {
@@ -125,6 +127,8 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("couldn't create kafka producer")
 	}
+
+	go consumeKafkaEvents(producer)
 
 	r := gin.New()
 
@@ -170,4 +174,21 @@ func main() {
 		r.POST("/receive", receiveHandler(producer, serializer))
 	}
 	logrus.Fatal(r.Run())
+}
+
+func consumeKafkaEvents(producer *kafka.Producer) {
+	for e := range producer.Events() {
+		switch ev := e.(type) {
+		case *kafka.Message:
+			if ev.TopicPartition.Error != nil {
+				kafkaDeliveryErrors.Inc()
+				logrus.WithError(ev.TopicPartition.Error).Debug("kafka delivery failed")
+			} else {
+				kafkaDeliverySuccess.Inc()
+			}
+		case kafka.Error:
+			kafkaErrors.Inc()
+			logrus.WithError(ev).Error("kafka error")
+		}
+	}
 }

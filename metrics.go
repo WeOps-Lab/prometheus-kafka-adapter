@@ -116,6 +116,36 @@ var (
 		},
 		[]string{"metric_name", "value_type", "instance_name"},
 	)
+
+	kafkaQueueDepth = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "kafka_producer_queue_depth",
+			Help: "Current number of messages in producer queue",
+		})
+
+	kafkaDeliverySuccess = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "kafka_delivery_success_total",
+			Help: "Total successful message deliveries to Kafka",
+		})
+
+	kafkaDeliveryErrors = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "kafka_delivery_errors_total",
+			Help: "Total failed message deliveries to Kafka",
+		})
+
+	kafkaErrors = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "kafka_errors_total",
+			Help: "Total Kafka client errors",
+		})
+
+	kafkaBackpressureTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "kafka_backpressure_total",
+			Help: "Total requests rejected due to backpressure",
+		})
 )
 
 func init() {
@@ -135,4 +165,9 @@ func init() {
 	prometheus.MustRegister(getCMDBInfoFailTotal)
 	prometheus.MustRegister(weopsObjGetDataIdFailTotal)
 	prometheus.MustRegister(weopsSpecialValueDropped)
+	prometheus.MustRegister(kafkaQueueDepth)
+	prometheus.MustRegister(kafkaDeliverySuccess)
+	prometheus.MustRegister(kafkaDeliveryErrors)
+	prometheus.MustRegister(kafkaErrors)
+	prometheus.MustRegister(kafkaBackpressureTotal)
 }
