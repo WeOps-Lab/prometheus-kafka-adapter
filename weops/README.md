@@ -9,6 +9,9 @@ prometheus向adapter写入监控指标，adapter将指标清洗，送入蓝鲸�
 - `KAFKA_TOPIC`：定义要使用的 Kafka 主题，默认为 `metrics`。
 - `KAFKA_COMPRESSION`：定义要使用的压缩类型，默认为 `none`。
 - `KAFKA_BATCH_NUM_MESSAGES`：定义要批量写入的消息数，默认为 `10000`。
+- `KAFKA_QUEUE_MAX_MESSAGES`：Kafka 生产者本地队列允许缓存的最大消息数，默认为 `100000`。
+- `KAFKA_QUEUE_MAX_KBYTES`：Kafka 生产者本地队列允许缓存的最大容量，单位为 KB，默认为 `1048576`。
+- `KAFKA_BACKPRESSURE_THRESHOLD`：背压阈值，取值范围 `(0,1]`，当生产者队列深度超过 `KAFKA_QUEUE_MAX_MESSAGES * 阈值` 时，`/receive` 会返回 `503`，默认为 `0.8`。
 - `SERIALIZATION_FORMAT`：定义序列化格式，可以是 `json`、`avro-json`，默认为 `json`。
 - `PORT`：定义要监听的 HTTP 端口，默认为 `8080`，由 [gin](https://github.com/gin-gonic/gin) 直接使用。
 - `BASIC_AUTH_USERNAME`：用于接收端点的基本身份验证用户名，默认为无基本身份验证。
@@ -66,7 +69,7 @@ Weops环境变量配置:
 - `BKAPP_PAAS_HOST`: 蓝鲸Paas访问地址，默认为 `http://paas.weops.com`。
 - `BKAPP_WEOPS_APP_ID`: Weops访问地址，默认为 `weops_saas`。
 - `BKAPP_WEOPS_APP_SECRET`: Weops Saas秘钥，可从开发者中心获取。
-- `METRICS_FILE`: k8s指标列表文件，默认已内置于容器，默认为 `metrics.yaml`。
+- `METRICS_FILE`: 固定指标列表文件，默认已内置于容器，默认为 `metrics.yaml`。当前用于维护 k8s 指标和 telegraf IPMI 固定指标映射。
 
 
 
@@ -90,10 +93,19 @@ remote_write:
   - url: "http://weops-adapter:8080/receive"
 ```
 
+### Kafka队列与背压
+
+- adapter 会暴露 Kafka 生产者队列和投递状态相关指标，可通过 `/metrics` 查看。
+- 当 Kafka 生产者本地队列积压超过背压阈值时，adapter 会拒绝新的 `/receive` 请求并返回 `503 Service Unavailable`，避免进程持续堆积消息导致内存压力上升。
+- 新增监控指标包括：`kafka_producer_queue_depth`、`kafka_delivery_success_total`、`kafka_delivery_errors_total`、`kafka_errors_total`、`kafka_backpressure_total`。
+
 ### 运行示例
 ```shell
 docker run -d --restart=always --net=host \
 -e KAFKA_BROKER_LIST=$BK_KAFKA_IP:9092 \
+-e KAFKA_QUEUE_MAX_MESSAGES=100000 \
+-e KAFKA_QUEUE_MAX_KBYTES=1048576 \
+-e KAFKA_BACKPRESSURE_THRESHOLD=0.8 \
 -e BASIC_AUTH_USERNAME=admin \
 -e BASIC_AUTH_PASSWORD=admin \
 -e PORT=8080 \
@@ -177,3 +189,9 @@ docker-bkrepo.cwoa.net/ce1b09/weops-docker/weops-kafka-adapter:v1.0.0
 #### v1.2.6
 - 新增 `container_memory_working_set_bytes` 指标，提高容器内存监控准确性
 - 修复容器内存使用量和使用率计算不准确的问题
+
+#### v1.2.7
+- 新增 Kafka 生产者队列深度、投递成功/失败、客户端错误、背压次数等运行指标
+- 新增背压控制，生产者队列达到阈值时返回 `503` 拒绝写入
+- 支持通过环境变量配置 Kafka 本地队列容量和背压阈值
+- 新增 `ipmi_drive_slot` 指标到 `metrics.yaml`
