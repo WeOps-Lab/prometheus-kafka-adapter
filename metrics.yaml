@@ -10,7 +10,7 @@ K8sPodMetrics:
   pod_network_transmit: pod_network_transmit
   pod_cpu_load: pod_cpu_load
   container_cpu_load_average_10s: container_cpu_load
-  kube_pod_start_time: pod_start_time_seconds
+  pod_start_time_seconds: pod_start_time_seconds
   kube_pod_status_phase: kube_pod_status_phase
   kube_pod_container_status_restarts_total: kube_pod_container_status_restarts_total
 
@@ -48,7 +48,7 @@ K8sClusterMetrics:
   apiserver_process_resident_memory_bytes: apiserver_process_resident_memory_bytes
   apiserver_process_cpu_use_percent: apiserver_process_cpu_use_percent
   apiserver_go_goroutines: apiserver_go_goroutines
-  
+
   kube_controller_manager_up: kube_controller_manager_up
   kube_controller_manager_workqueue_adds_rate: kube_controller_manager_workqueue_adds_rate
   kube_controller_manager_workqueue_depth: kube_controller_manager_workqueue_depth
